@@ -1,8 +1,21 @@
 "use strict";
 
-// Base RE hooker for IL2CPP classes.
-// Fill either: target.assembly + target.className, or target.namespace + target.className,
-// or target.fullName ("Namespace.ClassName"). Assembly is optional.
+/**
+ * Frida IL2CPP Class Hooker
+ *
+ * Dynamic analysis tool for Unity IL2CPP applications.
+ * Requires: frida-il2cpp-bridge (https://github.com/vfsfitvnm/frida-il2cpp-bridge)
+ *
+ * Features:
+ * - Flexible class/method targeting (assembly, namespace, class name, regex filters)
+ * - Intelligent type handling (String, Dictionary, List, Multimap, custom objects)
+ * - Rate-limited hook installation for stability (300 max hooks, 25ms delay)
+ * - Configurable logging (args, return values, stack traces, object field preview)
+ * - HTTP request/response analysis support
+ *
+ * Fill either: target.assembly + target.className, or target.namespace + target.className,
+ * or target.fullName ("Namespace.ClassName"). Assembly is optional.
+ */
 
 const CONFIG = {
   target: {
@@ -50,6 +63,12 @@ const CONFIG = {
   },
 };
 
+/**
+ * Normalizes target configuration by extracting namespace/className from fullName
+ * and removing .dll extension from assembly name if present.
+ * @param {Object} cfg - Target configuration object
+ * @returns {Object} Normalized configuration
+ */
 function normalizeTarget(cfg) {
   if (cfg.fullName && (!cfg.className || !cfg.namespace)) {
     const lastDot = cfg.fullName.lastIndexOf(".");
@@ -662,6 +681,12 @@ function classMatches(klass, target) {
   return true;
 }
 
+/**
+ * Searches for IL2CPP classes matching the target configuration.
+ * Supports exact or partial matching on namespace and className.
+ * @param {Object} target - Target configuration with optional assembly, namespace, className
+ * @returns {Object|null} Chosen class match with {assembly, klass} or null if none found
+ */
 function selectClass(target) {
   const assemblies = [];
   if (target.assembly) {
@@ -758,6 +783,15 @@ function buildHookList(klass, filters) {
   });
 }
 
+/**
+ * Installs Frida interceptors on specified methods with rate limiting.
+ * Logs method calls with arguments, return values, and optional stack traces.
+ * Supports special handling for HTTP request/response methods.
+ * @param {Object} klass - IL2CPP class object
+ * @param {string} classFullName - Fully qualified class name for logging
+ * @param {Array} methods - Array of method objects to hook
+ * @param {Object} hookCfg - Hook configuration from CONFIG.hook
+ */
 function hookMethods(klass, classFullName, methods, hookCfg) {
   if (!hookCfg.enabled) {
     console.log("[*] Hooking disabled.");
