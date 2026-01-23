@@ -316,12 +316,14 @@
                 }
                 const p = method.parameters[i];
                 const argPtr = args[i + argStart];
-                const val = formatters.formatArg(
-                  argPtr,
-                  p.type.name,
-                  config.formatting.strings.maxLength,
-                  config
-                );
+                const val = config.logging.rawArgs
+                  ? formatters.formatArgRaw(argPtr, p.type.name)
+                  : formatters.formatArg(
+                      argPtr,
+                      p.type.name,
+                      config.formatting.strings.maxLength,
+                      config
+                    );
                 argParts.push(`${p.name || "arg" + i}=${val}`);
               }
             }

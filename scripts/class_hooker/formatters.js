@@ -132,18 +132,22 @@
         : `${className}@${ptr}`;
     }
 
-    // Build field preview
+    // Build field preview (protected against memory access violations)
     const fields = [];
-    for (const field of obj.class.fields) {
-      if (field.isStatic) continue;
-      if (fields.length >= opts.maxObjectFields) break;
+    try {
+      for (const field of obj.class.fields) {
+        if (field.isStatic) continue;
+        if (fields.length >= opts.maxObjectFields) break;
 
-      try {
-        const value = obj.field(field.name).value;
-        const typeName = field.type.name;
-        const summary = summarizeFieldValue(value, typeName, opts);
-        fields.push(`${field.name}=${summary}`);
-      } catch (_) {}
+        try {
+          const value = obj.field(field.name).value;
+          const typeName = field.type.name;
+          const summary = summarizeFieldValue(value, typeName, opts);
+          fields.push(`${field.name}=${summary}`);
+        } catch (_) {}
+      }
+    } catch (_) {
+      // Fields iteration failed (corrupted metadata or invalid pointer)
     }
 
     const preview = fields.length > 0 ? ` {${fields.join(", ")}}` : "";
@@ -289,19 +293,23 @@
     console.log(`==== DUMP ${typeName} @ ${ptr} (${className}) ====`);
 
     let printed = 0;
-    for (const field of obj.class.fields) {
-      if (!opts.includeStatic && field.isStatic) continue;
-      if (printed >= opts.maxFields) {
-        console.log("  ...");
-        break;
-      }
+    try {
+      for (const field of obj.class.fields) {
+        if (!opts.includeStatic && field.isStatic) continue;
+        if (printed >= opts.maxFields) {
+          console.log("  ...");
+          break;
+        }
 
-      try {
-        const value = obj.field(field.name).value;
-        const summary = summarizeFieldValue(value, field.type.name, opts);
-        console.log(`  ${field.name}: ${summary}`);
-        printed++;
-      } catch (_) {}
+        try {
+          const value = obj.field(field.name).value;
+          const summary = summarizeFieldValue(value, field.type.name, opts);
+          console.log(`  ${field.name}: ${summary}`);
+          printed++;
+        } catch (_) {}
+      }
+    } catch (e) {
+      console.log(`  [ERROR] Cannot read fields: ${e.message}`);
     }
 
     console.log("==== END DUMP ====");

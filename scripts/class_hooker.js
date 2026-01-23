@@ -21,7 +21,7 @@ const CONFIG = {
   target: {
     assembly: null, // Example: "Core", "Assembly-CSharp"
     namespace: null, // Example: "Com.Example.Network", "App.Core.Services"
-    className: null, // Example: "ApiClient", "NetworkManager", "MessageHandler"
+    className: "gso", // Example: "ApiClient", "NetworkManager", "MessageHandler"
     fullName: null, // Example: "Com.Example.Network.ApiClient"
     pickIndex: 0, // If multiple matches, pick this index
     allowPartial: false, // Allow substring match on namespace/class
@@ -220,7 +220,7 @@ function tryObjectToString(objPtr, maxLen) {
   try {
     const obj = new Il2Cpp.Object(objPtr);
     const toStringMethod = obj.class.methods.find(
-      (m) => m.name === "ToString" && m.parameterCount === 0
+      (m) => m.name === "ToString" && m.parameterCount === 0,
     );
     if (!toStringMethod) return null;
     const res = obj.method("ToString").invoke();
@@ -292,7 +292,7 @@ function findStringField(objPtr, nameMatch) {
 
 function extractBasePathFromConfig(configPtr) {
   return findStringField(configPtr, (name) =>
-    name.toLowerCase().includes("basepath")
+    name.toLowerCase().includes("basepath"),
   );
 }
 
@@ -310,7 +310,7 @@ function readHttpMethod(methodPtr) {
   const asString = tryObjectToString(methodPtr, CONFIG.hook.maxStringLength);
   if (asString) return asString;
   return findStringField(methodPtr, (name) =>
-    name.toLowerCase().includes("method")
+    name.toLowerCase().includes("method"),
   );
 }
 
@@ -393,17 +393,17 @@ function extractResponseSummary(respPtr, opts) {
   if (str) parts.push(`"${str}"`);
 
   const status = findIntField(respPtr, (name) =>
-    name.toLowerCase().includes("status")
+    name.toLowerCase().includes("status"),
   );
   if (status !== null) parts.push(`status=${status}`);
 
   const reason = findStringField(respPtr, (name) =>
-    name.toLowerCase().includes("reason")
+    name.toLowerCase().includes("reason"),
   );
   if (reason) parts.push(`reason="${truncate(reason, opts.maxStringLength)}"`);
 
   const uri = findStringField(respPtr, (name) =>
-    name.toLowerCase().includes("uri")
+    name.toLowerCase().includes("uri"),
   );
   if (uri) parts.push(`uri="${truncate(uri, opts.maxStringLength)}"`);
 
@@ -415,7 +415,7 @@ function extractRequestSummary(reqPtr, opts) {
 
   const str = tryObjectToString(
     reqPtr,
-    opts.reqToStringMaxLen || opts.maxStringLength
+    opts.reqToStringMaxLen || opts.maxStringLength,
   );
   if (!str) return null;
 
@@ -534,7 +534,7 @@ function previewObject(ptr, opts) {
   if (opts.tryToString) {
     try {
       const toStringMethod = obj.class.methods.find(
-        (m) => m.name === "ToString" && m.parameterCount === 0
+        (m) => m.name === "ToString" && m.parameterCount === 0,
       );
       if (toStringMethod) {
         const res = obj.method("ToString").invoke();
@@ -568,7 +568,7 @@ function previewObject(ptr, opts) {
   if (toStringValue) {
     return `${className}@${ptr} "${truncate(
       toStringValue,
-      opts.maxStringLength
+      opts.maxStringLength,
     )}"${preview}`;
   }
   return `${className}@${ptr}${preview}`;
@@ -720,7 +720,7 @@ function selectClass(target) {
           assembly.image.classes.forEach((klass) => {
             if (klass.name.includes(target.className)) {
               console.log(
-                `  ${assembly.name} -> ${klass.namespace}.${klass.name}`
+                `  ${assembly.name} -> ${klass.namespace}.${klass.name}`,
               );
             }
           });
@@ -733,7 +733,7 @@ function selectClass(target) {
   console.log(`[+] Found ${matches.length} matching class(es):`);
   matches.forEach((m, i) => {
     console.log(
-      `  [${i}] ${m.assembly.name} -> ${m.klass.namespace}.${m.klass.name}`
+      `  [${i}] ${m.assembly.name} -> ${m.klass.namespace}.${m.klass.name}`,
     );
   });
 
@@ -741,7 +741,7 @@ function selectClass(target) {
 
   const chosen = matches[pick];
   console.log(
-    `[+] Using [${pick}] ${chosen.assembly.name} -> ${chosen.klass.namespace}.${chosen.klass.name}`
+    `[+] Using [${pick}] ${chosen.assembly.name} -> ${chosen.klass.namespace}.${chosen.klass.name}`,
   );
   return chosen;
 }
@@ -808,7 +808,7 @@ function hookMethods(klass, classFullName, methods, hookCfg) {
     if (idx >= methods.length || hooked >= hookCfg.maxHooks) {
       clearInterval(timer);
       console.log(
-        `[✓] Hooked ${hooked} methods (${failed} failed, ${methods.length} total)\n`
+        `[✓] Hooked ${hooked} methods (${failed} failed, ${methods.length} total)\n`,
       );
       return;
     }
@@ -856,7 +856,7 @@ function hookMethods(klass, classFullName, methods, hookCfg) {
 
           const argsStr = hookCfg.logArgs ? argParts.join(", ") : "";
           console.log(
-            `[CALL] ${classFullName}.${method.name}(${argsStr})${thisInfo}`
+            `[CALL] ${classFullName}.${method.name}(${argsStr})${thisInfo}`,
           );
 
           // Advanced: Custom analysis for specific methods
@@ -961,7 +961,7 @@ function hookMethods(klass, classFullName, methods, hookCfg) {
             const ret = formatReturn(
               retval,
               method.returnType.name,
-              hookCfg.maxStringLength
+              hookCfg.maxStringLength,
             );
             console.log(`[RET] ${classFullName}.${method.name} -> ${ret}`);
           }
@@ -976,7 +976,7 @@ function hookMethods(klass, classFullName, methods, hookCfg) {
             if (info) {
               if (info.method || info.uri) {
                 console.log(
-                  `[REQ] method="${info.method || ""}" uri="${info.uri || ""}"`
+                  `[REQ] method="${info.method || ""}" uri="${info.uri || ""}"`,
                 );
               }
               if (info.headersBlock) {

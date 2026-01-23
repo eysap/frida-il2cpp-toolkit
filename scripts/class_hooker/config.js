@@ -21,7 +21,7 @@
     target: {
       assembly: null, // Optional: "Core", "Assembly-CSharp"
       namespace: null, // Optional: "Com.Example.Network"
-      className: null, // Required: "ApiClient"
+      className: "gso", // Required: "ApiClient"
       fullName: null, // Alternative: "Com.Example.Network.ApiClient"
       pickIndex: 0, // If multiple matches, select this index
       allowPartial: false, // Enable substring matching
@@ -44,6 +44,7 @@
       showThis: true, // Display 'this' pointer
       showStack: false, // Capture stack traces (expensive!)
       maxArgs: 8, // Maximum arguments to display
+      rawArgs: true, // Show raw pointers in CALL log (prevents crashes on complex objects)
     },
 
     formatting: {
