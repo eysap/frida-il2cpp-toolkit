@@ -201,9 +201,9 @@
    * @param {Object} method - Method object
    * @param {Array} args - Method arguments
    * @param {number} argStart - Argument start index
-   * @param {Object} hookCfg - Hook configuration
+   * @param {Object} config - Full configuration object
    */
-  function analyzeNewRequest(method, args, argStart, hookCfg) {
+  function analyzeNewRequest(method, args, argStart, config) {
     const paramMap = {};
     method.parameters.forEach((p, i) => {
       const key = (p.name || "").toLowerCase();
@@ -224,7 +224,7 @@
     }
     const optionsInfo = paramMap.options
       ? httpAnalysis.extractOptionsDetails(paramMap.options.ptr,
-          formatters.getPreviewOptions(hookCfg))
+          formatters.getPreviewOptions(config))
       : null;
 
     const methodUpper = httpMethod ? httpMethod.toUpperCase() : null;
@@ -261,10 +261,10 @@
    * @param {Il2Cpp.Class} klass - IL2CPP class object
    * @param {string} classFullName - Fully qualified class name for logging
    * @param {Array} methods - Array of method objects to hook
-   * @param {Object} hookCfg - Hook configuration
+   * @param {Object} config - Full configuration object
    */
-  function hookMethods(klass, classFullName, methods, hookCfg) {
-    if (!hookCfg.enabled) {
+  function hookMethods(klass, classFullName, methods, config) {
+    if (!config.performance.enabled) {
       console.log("[*] Hooking disabled.");
       return;
     }
@@ -276,7 +276,7 @@
     console.log(`[+] Hooking ${methods.length} methods (slow mode)...`);
 
     const timer = setInterval(() => {
-      if (idx >= methods.length || hooked >= hookCfg.maxHooks) {
+      if (idx >= methods.length || hooked >= config.performance.maxHooks) {
         clearInterval(timer);
         console.log(
           `[✓] Hooked ${hooked} methods (${failed} failed, ${methods.length} total)\n`
@@ -298,7 +298,7 @@
             const argStart = method.isStatic ? 0 : 1;
             const argParts = [];
             const isNewRequest =
-              hookCfg.logSpecials && method.name === "NewRequest";
+              config.analysis.http.enabled && method.name === "NewRequest";
             const sep = "----------------------------------------";
 
             if (isNewRequest) {
@@ -308,55 +308,58 @@
             }
 
             // Log arguments
-            if (hookCfg.logArgs) {
+            if (config.logging.args) {
               for (let i = 0; i < method.parameters.length; i++) {
-                if (i >= hookCfg.maxArgs) {
+                if (i >= config.logging.maxArgs) {
                   argParts.push("...");
                   break;
                 }
                 const p = method.parameters[i];
                 const argPtr = args[i + argStart];
-                const val = hookCfg.rawCallArgs
-                  ? formatters.formatArgRaw(argPtr, p.type.name)
-                  : formatters.formatArg(argPtr, p.type.name, hookCfg.maxStringLength, hookCfg);
+                const val = formatters.formatArg(
+                  argPtr,
+                  p.type.name,
+                  config.formatting.strings.maxLength,
+                  config
+                );
                 argParts.push(`${p.name || "arg" + i}=${val}`);
               }
             }
 
             const thisInfo =
-              !method.isStatic && hookCfg.showThis ? ` this=${args[0]}` : "";
+              !method.isStatic && config.logging.showThis ? ` this=${args[0]}` : "";
 
-            const argsStr = hookCfg.logArgs ? argParts.join(", ") : "";
+            const argsStr = config.logging.args ? argParts.join(", ") : "";
             console.log(
               `[CALL] ${classFullName}.${method.name}(${argsStr})${thisInfo}`
             );
 
             // Custom method analysis (extensible)
-            if (isAnalyzeMethod(method.name, hookCfg.analyzeMethods)) {
-              if (hookCfg.analyzeSeparator) console.log(sep);
+            if (isAnalyzeMethod(method.name, config.analysis.custom.methods)) {
+              console.log(sep);
               console.log(`[ANALYZE] ${classFullName}.${method.name}`);
               // Add custom analysis logic here
-              if (hookCfg.analyzeSeparator) console.log(sep);
+              console.log(sep);
             }
 
             // Dump objects if configured
-            if (hookCfg.dumpOnCall) {
+            if (config.dump.enabled) {
               for (let i = 0; i < method.parameters.length; i++) {
                 const p = method.parameters[i];
                 if (!p || !p.type) continue;
-                if (!formatters.shouldDumpType(p.type.name, hookCfg)) continue;
+                if (!formatters.shouldDumpType(p.type.name, config.dump)) continue;
                 const argPtr = args[i + argStart];
-                formatters.dumpObjectFields(argPtr, p.type.name, hookCfg);
+                formatters.dumpObjectFields(argPtr, p.type.name, config.dump);
               }
             }
 
             // Special handling for NewRequest (HTTP analysis)
             if (isNewRequest) {
-              analyzeNewRequest(method, args, argStart, hookCfg);
+              analyzeNewRequest(method, args, argStart, config);
             }
 
             // Stack trace if enabled
-            if (hookCfg.showStack) {
+            if (config.logging.showStack) {
               const stack = Thread.backtrace(this.context, Backtracer.ACCURATE)
                 .slice(0, LIMITS.MAX_BACKTRACE_DEPTH)
                 .map(DebugSymbol.fromAddress)
@@ -366,22 +369,22 @@
           },
           onLeave: function (retval) {
             // Log return value
-            if (hookCfg.logReturn) {
+            if (config.logging.return) {
               const ret = formatters.formatReturn(
                 retval,
                 method.returnType.name,
-                hookCfg.maxStringLength,
-                hookCfg
+                config.formatting.strings.maxLength,
+                config
               );
               console.log(`[RET] ${classFullName}.${method.name} -> ${ret}`);
             }
 
             // Special handling for NewRequest response
-            if (hookCfg.logSpecials && method.name === "NewRequest") {
+            if (config.analysis.http.enabled && method.name === "NewRequest") {
               const sep = this.__req_sep || "----------------------------------------";
               const info = httpAnalysis.extractRequestSummary(retval, {
-                maxStringLength: hookCfg.maxStringLength,
-                reqToStringMaxLen: hookCfg.reqToStringMaxLen,
+                maxStringLength: config.formatting.strings.maxLength,
+                reqToStringMaxLen: config.formatting.strings.httpMaxLength,
               });
               if (info) {
                 if (info.method || info.uri) {
@@ -402,12 +405,12 @@
 
             // Special handling for API response methods
             if (
-              hookCfg.logSpecials &&
+              config.analysis.http.enabled &&
               (method.name.includes("CallApi") ||
                 method.name.includes("SendAsync"))
             ) {
               const summary = httpAnalysis.extractResponseSummary(retval, {
-                maxStringLength: hookCfg.maxStringLength,
+                maxStringLength: config.formatting.strings.maxLength,
               });
               if (summary) {
                 console.log(`[RESP] ${summary}`);
@@ -422,7 +425,7 @@
         failed++;
         console.log(`[!] Failed: ${sig} (${e.message})`);
       }
-    }, hookCfg.delayMs);
+    }, config.performance.hookDelayMs);
   }
 
   // Export to global scope

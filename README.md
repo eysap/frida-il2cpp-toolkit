@@ -33,7 +33,7 @@ Modular Frida toolkit for dynamic analysis of Unity IL2CPP applications. Designe
 ```
 scripts/class_hooker/
 ├── constants.js       # Memory offsets and safety limits
-├── config.js         # User configuration (edit this!)
+├── config.js         # User configuration
 ├── utils.js          # Type checking, string handling, field reading
 ├── formatters.js     # Argument/object formatting, dumping logic
 ├── http-analysis.js  # HTTP request/response analysis
@@ -53,7 +53,7 @@ scripts/class_hooker/
 
 ### 1. Configure Target
 
-Edit `scripts/class_hooker/config.js`:
+`scripts/class_hooker/config.js`:
 
 ```javascript
 const CONFIG = {
@@ -67,15 +67,57 @@ const CONFIG = {
     methodNameContains: null,           // Filter by substring
     methodRegex: null,                  // OR filter by regex: "^Send|^Receive"
   },
-  hook: {
-    logArgs: true,
-    logReturn: false,
-    showThis: true,
-    maxStringLength: 200,
-    expandDictionaries: true,
-    expandLists: true,
-    // ... see config.js for all options
-  }
+  performance: {
+    enabled: true,                      // Master on/off switch
+    hookDelayMs: 25,                    // Delay between hook installations
+    maxHooks: 300,                      // Safety limit
+  },
+  logging: {
+    args: true,                         // Log method arguments
+    return: false,                      // Log return values
+    showThis: true,                     // Display 'this' pointer
+    showStack: false,                   // Capture stack traces
+    maxArgs: 8,                         // Maximum arguments to display
+  },
+  formatting: {
+    strings: {
+      maxLength: 200,                   // Default string truncation
+      httpMaxLength: 2048,              // For HTTP ToString()
+    },
+    objects: {
+      tryToString: true,                // Invoke ToString() method
+      showFields: true,                 // Display field preview
+      maxFields: 6,                     // Maximum fields in preview
+    },
+    collections: {
+      dictionaries: {
+        enabled: true,                  // Show Dictionary<K,V> contents
+        maxEntries: 6,                  // Maximum entries to display
+      },
+      lists: {
+        enabled: true,                  // Show List<T> size
+      },
+      multimaps: {
+        enabled: true,                  // Show Multimap summary
+      },
+    },
+  },
+  dump: {
+    enabled: false,                     // Master dump switch
+    types: [],                          // Types to dump: ["UserProfile", "GameState"]
+    deduplication: true,                // Skip already-dumped pointers
+    maxPerType: 20,                     // Maximum dumps per type
+    maxFields: 30,                      // Maximum fields per dump
+    includeStatic: false,               // Include static fields
+  },
+  analysis: {
+    http: {
+      enabled: true,                    // Detect HTTP methods
+    },
+    custom: {
+      methods: [],                      // Methods for detailed analysis
+    },
+  },
 };
 ```
 
@@ -83,7 +125,7 @@ const CONFIG = {
 
 ```bash
 frida \
-  -l /path/to/frida-il2cpp-bridge/dist/index.js \
+  -l /path/to/frida-il2cpp-bridge/dist/index.js \ 
   -l scripts/class_hooker/constants.js \
   -l scripts/class_hooker/config.js \
   -l scripts/class_hooker/utils.js \
@@ -133,50 +175,80 @@ filters: {
 }
 ```
 
-### Hook Configuration
+### Performance Configuration
 
 ```javascript
-hook: {
-  enabled: true,                      // Master switch
-  delayMs: 25,                        // Delay between hook installations
-  maxHooks: 300,                      // Safety limit
+performance: {
+  enabled: true,                      // Master on/off switch
+  hookDelayMs: 25,                    // Delay between hook installations (stability)
+  maxHooks: 300,                      // safety limit
+}
+```
 
-  // Logging
-  logArgs: true,                      // Log method arguments
-  logReturn: false,                   // Log return values
-  showThis: true,                     // Show 'this' pointer
-  showStack: false,                   // Capture stack traces
+### Logging Configuration
 
-  // String handling
-  maxStringLength: 200,               // Truncate strings
-  rawCallArgs: true,                  // Show raw pointers in CALL log
+```javascript
+logging: {
+  args: true,                         // Log method arguments
+  return: false,                      // Log return values
+  showThis: true,                     // Display 'this' pointer
+  showStack: false,                   // Capture stack traces (expensive!)
+  maxArgs: 8,                         // Maximum arguments to display
+}
+```
 
-  // Object handling
-  tryToString: true,                  // Invoke ToString() on objects
-  previewObjects: true,               // Show field previews
-  maxObjectFields: 6,                 // Fields to show in preview
+### Formatting Configuration
 
-  // Collections
-  expandDictionaries: true,           // Show Dictionary contents
-  maxDictEntries: 6,                  // Dictionary entries to display
-  expandLists: true,                  // Show List sizes
-  expandMultimap: true,               // Show Multimap contents
+```javascript
+formatting: {
+  strings: {
+    maxLength: 200,                   // Default string truncation
+    httpMaxLength: 2048,              // For HTTP ToString() (includes headers)
+  },
+  objects: {
+    tryToString: true,                // Invoke managed ToString() method
+    showFields: true,                 // Display shallow field preview
+    maxFields: 6,                     // Maximum fields in preview
+  },
+  collections: {
+    dictionaries: {
+      enabled: true,                  // Show Dictionary<K,V> contents
+      maxEntries: 6,                  // Maximum entries to display
+    },
+    lists: {
+      enabled: true,                  // Show List<T> size
+    },
+    multimaps: {
+      enabled: true,                  // Show Multimap`2 summary
+    },
+  },
+}
+```
 
-  // HTTP analysis
-  logSpecials: true,                  // Enable HTTP method handlers
-  reqToStringMaxLen: 2048,            // Max length for request ToString()
+### Dump Configuration
 
-  // Object dumping
-  dumpOnCall: false,                  // Enable object dumps
-  dumpTypes: [],                      // Types to dump: ["RequestData", "Config"]
-  dumpOncePerPtr: true,               // Deduplicate by pointer
-  dumpMaxPerType: 20,                 // Max dumps per type
-  dumpMaxFields: 30,                  // Max fields per dump
-  dumpIncludeStatic: false,           // Include static fields
+```javascript
+dump: {
+  enabled: false,                     // Master dump switch
+  types: [],                          // Type names to dump: ["UserProfile", "GameState"]
+  deduplication: true,                // Skip already-dumped pointers
+  maxPerType: 20,                     // Maximum dumps per type
+  maxFields: 30,                      // Maximum fields per dump
+  includeStatic: false,               // Include static fields in dump
+}
+```
 
-  // Custom analysis
-  analyzeMethods: [],                 // Methods for custom analysis
-  analyzeSeparator: true,             // Visual separators for analysis
+### Analysis Configuration
+
+```javascript
+analysis: {
+  http: {
+    enabled: true,                    // Detect NewRequest, CallApi, SendAsync
+  },
+  custom: {
+    methods: [],                      // Method names for detailed analysis
+                                      // Example: ["ProcessTransaction", "UpdateBalance"]
+  },
 }
 ```
 
@@ -209,21 +281,36 @@ filters: {
 target: {
   fullName: "RestSharp.RestClient",  // RestSharp HTTP client
 }
-hook: {
-  logSpecials: true,         // Enable HTTP handlers
-  logArgs: true,
-  expandDictionaries: true,  // Show headers
+logging: {
+  args: true,                // Log arguments
+}
+formatting: {
+  collections: {
+    dictionaries: {
+      enabled: true,         // Show headers
+    },
+  },
+}
+analysis: {
+  http: {
+    enabled: true,           // Enable HTTP handlers
+  },
 }
 ```
 
 ### Example 4: Deep Object Analysis
 
 ```javascript
-hook: {
-  dumpOnCall: true,
-  dumpTypes: ["UserProfile", "GameState"],  // Types to dump
-  previewObjects: true,
-  maxObjectFields: 10,
+dump: {
+  enabled: true,
+  types: ["UserProfile", "GameState"],  // Types to dump
+  maxFields: 10,
+}
+formatting: {
+  objects: {
+    showFields: true,        // Preview objects
+    maxFields: 10,
+  },
 }
 ```
 
@@ -261,16 +348,23 @@ hook: {
 
 ## Troubleshooting
 
+### "Il2Cpp is not defined" Error
+
+**Critical**: You must load `frida-il2cpp-bridge` **before** any class_hooker modules.
+
+Without frida-il2cpp-bridge, the `Il2Cpp` global object is not available and all hooks will fail.
+
 ### "Dependencies not loaded" Error
 
 Ensure modules are loaded in correct order:
-1. constants.js
-2. config.js
-3. utils.js
-4. formatters.js
-5. http-analysis.js
-6. core.js
-7. index.js
+1. **frida-il2cpp-bridge/dist/index.js** (REQUIRED FIRST)
+2. constants.js
+3. config.js
+4. utils.js
+5. formatters.js
+6. http-analysis.js
+7. core.js
+8. index.js
 
 ### No Matching Class Found
 
@@ -280,17 +374,17 @@ Ensure modules are loaded in correct order:
 
 ### Hooks Failing
 
-- Reduce `maxHooks` if installing many hooks
-- Increase `delayMs` for slower hook installation
+- Reduce `performance.maxHooks` if installing many hooks
+- Increase `performance.hookDelayMs` for slower hook installation
 - Check that methods have valid virtual addresses
 - Some methods (abstract, native) cannot be hooked
 
 ### Performance Issues
 
-- Disable `showStack` (expensive operation)
-- Reduce `maxObjectFields` for object previews
-- Set `rawCallArgs: true` to skip string decoding
-- Disable `expandDictionaries` for large collections
+- Disable `logging.showStack` (expensive operation)
+- Reduce `formatting.objects.maxFields` for object previews
+- Reduce `formatting.strings.maxLength` to skip long string processing
+- Disable `formatting.collections.dictionaries.enabled` for large collections
 
 ## Contributing
 

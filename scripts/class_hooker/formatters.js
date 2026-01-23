@@ -28,19 +28,19 @@
 
   /**
    * Gets common object preview options from config
-   * @param {Object} config - Hook configuration
+   * @param {Object} config - Full CONFIG object
    * @returns {Object} Preview options
    */
   function getPreviewOptions(config) {
     return {
-      tryToString: config.tryToString,
-      previewObjects: config.previewObjects,
-      maxObjectFields: config.maxObjectFields,
-      maxStringLength: config.maxStringLength,
-      expandDictionaries: config.expandDictionaries,
-      maxDictEntries: config.maxDictEntries,
-      expandLists: config.expandLists,
-      expandMultimap: config.expandMultimap,
+      tryToString: config.formatting.objects.tryToString,
+      previewObjects: config.formatting.objects.showFields,
+      maxObjectFields: config.formatting.objects.maxFields,
+      maxStringLength: config.formatting.strings.maxLength,
+      expandDictionaries: config.formatting.collections.dictionaries.enabled,
+      maxDictEntries: config.formatting.collections.dictionaries.maxEntries,
+      expandLists: config.formatting.collections.lists.enabled,
+      expandMultimap: config.formatting.collections.multimaps.enabled,
     };
   }
 
@@ -241,9 +241,9 @@
    * @returns {boolean} True if should dump
    */
   function shouldDumpType(typeName, opts) {
-    if (!opts.dumpTypes || opts.dumpTypes.length === 0) return false;
+    if (!opts.types || opts.types.length === 0) return false;
     const lower = typeName.toLowerCase();
-    return opts.dumpTypes.some((t) => t.toLowerCase() === lower);
+    return opts.types.some((t) => t.toLowerCase() === lower);
   }
 
   /**
@@ -255,13 +255,13 @@
    */
   function canDumpPtr(ptr, typeName, opts) {
     const key = `${typeName}@${ptr}`;
-    if (opts.dumpOncePerPtr && dumpState.seen.has(key)) return false;
+    if (opts.deduplication && dumpState.seen.has(key)) return false;
 
     const count = dumpState.countByType.get(typeName) || 0;
-    if (opts.dumpMaxPerType && count >= opts.dumpMaxPerType) return false;
+    if (opts.maxPerType && count >= opts.maxPerType) return false;
 
     dumpState.countByType.set(typeName, count + 1);
-    if (opts.dumpOncePerPtr) dumpState.seen.add(key);
+    if (opts.deduplication) dumpState.seen.add(key);
     return true;
   }
 
@@ -290,8 +290,8 @@
 
     let printed = 0;
     for (const field of obj.class.fields) {
-      if (!opts.dumpIncludeStatic && field.isStatic) continue;
-      if (printed >= opts.dumpMaxFields) {
+      if (!opts.includeStatic && field.isStatic) continue;
+      if (printed >= opts.maxFields) {
         console.log("  ...");
         break;
       }

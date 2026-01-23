@@ -1,67 +1,100 @@
 "use strict";
 
 /**
- * Configuration for Frida IL2CPP Class Hooker
+ * Configuration for Frida IL2CPP Class Hooker - Refactored
  *
- * Target Configuration:
- * - Specify target class by: assembly + className, or namespace + className, or fullName
- * - Assembly is optional (searches all assemblies if omitted)
- * - Use allowPartial for substring matching on namespace/class names
+ * Hierarchical organization with logical grouping:
  *
- * Filter Options:
- * - methodNameContains: Filter by method name substring
- * - methodRegex: Filter by regex pattern (e.g., "^get_|^set_" for properties)
- *
- * Hook Configuration:
- * - Rate limiting: delayMs between hooks, maxHooks safety limit
- * - Logging: args, return values, stack traces, object previews
- * - Special handlers: HTTP request/response analysis, custom type dumping
+ * target     → Class selection criteria
+ * filters    → Method filtering rules
+ * performance → Rate limiting and resource management
+ * logging    → What information to log
+ * formatting → How to display logged values
+ * dump       → Deep object inspection settings
+ * analysis   → Special analysis handlers
  *
  * @module config
  */
 
-(function(global) {
+(function (global) {
   const CONFIG = {
     target: {
-      assembly: null, // Example: "Core", "Assembly-CSharp"
-      namespace: null, // Example: "Com.Example.Network", "App.Core.Services"
-      className: null, // Example: "ApiClient", "NetworkManager", "MessageHandler"
-      fullName: null, // Example: "Com.Example.Network.ApiClient"
-      pickIndex: 0, // If multiple matches, pick this index
-      allowPartial: false, // Allow substring match on namespace/class
+      assembly: null, // Optional: "Core", "Assembly-CSharp"
+      namespace: null, // Optional: "Com.Example.Network"
+      className: null, // Required: "ApiClient"
+      fullName: null, // Alternative: "Com.Example.Network.ApiClient"
+      pickIndex: 0, // If multiple matches, select this index
+      allowPartial: false, // Enable substring matching
     },
+
     filters: {
-      methodNameContains: null, // Example: "Encode"
-      methodRegex: null, // Example: "^get_|^set_"
+      methodNameContains: null, // Substring filter: "Request"
+      methodRegex: null, // Regex filter: "^get_|^set_"
     },
-    hook: {
-      enabled: true,
-      delayMs: 25, // Hook one method every N ms to keep it smooth
-      maxHooks: 300, // Safety limit
-      logArgs: true,
-      logReturn: false,
-      showThis: true,
-      showStack: false,
-      maxStringLength: 200,
-      maxArgs: 8,
-      rawCallArgs: true, // Keep CALL args raw (no string decoding)
-      reqToStringMaxLen: 2048, // Larger cap to include headers when possible
-      tryToString: true, // Try managed ToString() on objects
-      previewObjects: true, // Show shallow field summary for objects
-      maxObjectFields: 6,
-      expandDictionaries: true, // Decode Dictionary<string,string> when possible
-      maxDictEntries: 6,
-      expandLists: true, // Show List<T> size when possible
-      expandMultimap: true, // Try to summarize Multimap`2 containers
-      logSpecials: true, // Extra logs for known method names
-      dumpOnCall: false,
-      dumpTypes: [],
-      dumpOncePerPtr: true,
-      dumpMaxPerType: 20,
-      dumpMaxFields: 30,
-      dumpIncludeStatic: false,
-      analyzeMethods: [],
-      analyzeSeparator: true,
+
+    performance: {
+      enabled: true, // Master on/off switch
+      hookDelayMs: 25, // Delay between hook installations (stability)
+      maxHooks: 300, // Maximum hooks per session (safety limit)
+    },
+
+    logging: {
+      args: true, // Log method arguments
+      return: false, // Log return values
+      showThis: true, // Display 'this' pointer
+      showStack: false, // Capture stack traces (expensive!)
+      maxArgs: 8, // Maximum arguments to display
+    },
+
+    formatting: {
+      // String handling
+      strings: {
+        maxLength: 200, // Default string truncation
+        httpMaxLength: 2048, // For HTTP ToString() (includes headers)
+      },
+
+      // Object representation
+      objects: {
+        tryToString: true, // Invoke managed ToString() method
+        showFields: true, // Display shallow field preview
+        maxFields: 6, // Maximum fields in preview
+      },
+
+      // Collection expansion
+      collections: {
+        dictionaries: {
+          enabled: true, // Show Dictionary<K,V> contents
+          maxEntries: 6, // Maximum entries to display
+        },
+        lists: {
+          enabled: true, // Show List<T> size
+        },
+        multimaps: {
+          enabled: true, // Show Multimap`2 summary
+        },
+      },
+    },
+
+    dump: {
+      enabled: false, // Master dump switch
+      types: [], // Type names to dump: ["UserProfile", "GameState"]
+      deduplication: true, // Skip already-dumped pointers
+      maxPerType: 20, // Maximum dumps per type
+      maxFields: 30, // Maximum fields per dump
+      includeStatic: false, // Include static fields in dump
+    },
+
+    analysis: {
+      // HTTP request/response detection
+      http: {
+        enabled: true, // Detect NewRequest, CallApi, SendAsync
+      },
+
+      // Custom method analysis
+      custom: {
+        methods: [], // Method names for detailed analysis
+        // Example: ["ProcessTransaction", "UpdateBalance"]
+      },
     },
   };
 

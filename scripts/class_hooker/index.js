@@ -84,7 +84,7 @@
     console.log(`[+] Selected ${methodsToHook.length} methods to hook`);
 
     // Install hooks
-    core.hookMethods(klass, classFullName, methodsToHook, CONFIG.hook);
+    core.hookMethods(klass, classFullName, methodsToHook, CONFIG);
   }
 
   // Execute when IL2CPP is ready
