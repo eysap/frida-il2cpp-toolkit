@@ -78,6 +78,8 @@ const CONFIG = {
     showThis: true,                     // Display 'this' pointer
     showStack: false,                   // Capture stack traces
     maxArgs: 8,                         // Maximum arguments to display
+    rawArgs: true,                      // Show raw pointers (prevents crashes on complex objects)
+
   },
   formatting: {
     strings: {
