@@ -4,8 +4,6 @@
 [![Frida](https://img.shields.io/badge/Frida-16.x+-blue)](https://frida.re)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20Android%20%7C%20iOS-lightgrey)](https://frida.re)
 
-Modular Frida toolkit for dynamic analysis of Unity IL2CPP applications. Designed for reverse engineers and security researchers.
-
 ## TL;DR
 - Modular Frida toolkit for Unity IL2CPP
 - Selective hooking of classes/methods with intelligent type analysis
