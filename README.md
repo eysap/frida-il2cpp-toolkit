@@ -23,36 +23,20 @@ A collection of Frida scripts for dynamic analysis of Unity IL2CPP applications.
 
 ## Quick Start
 
-### Desktop (Linux/Windows)
+### Desktop
 
 ```bash
-# Start your Unity IL2CPP application
-./application.x64
-
-# In another terminal, attach Frida with both required scripts
 frida -l /path/to/frida-il2cpp-bridge/dist/index.js \
       -l scripts/class_hooker.js \
       -p $(pidof application.x64)
 ```
 
-### Mobile (Android)
+### Mobile
 
 ```bash
-# USB-connected Android device with Frida server running
 frida -U -l /path/to/frida-il2cpp-bridge/dist/index.js \
          -l scripts/class_hooker.js \
          -f com.example.app \
-         --no-pause
-```
-
-### iOS
-
-```bash
-# USB-connected iOS device with Frida server installed
-frida -U -l /path/to/frida-il2cpp-bridge/dist/index.js \
-         -l scripts/class_hooker.js \
-         -f com.example.app \
-         --no-pause
 ```
 
 ## Configuration
@@ -81,42 +65,6 @@ const CONFIG = {
 ```
 
 See [docs/CONFIG.md](docs/CONFIG.md) for complete configuration reference.
-
-## Use Cases
-
-### API Client Analysis
-
-Hook network request methods to analyze API endpoints, parameters, and authentication:
-
-```javascript
-target: {
-  namespace: "Com.Example.Network",
-  className: "ApiClient"
-}
-```
-
-### Protocol Reverse Engineering
-
-Monitor serialization/deserialization methods to understand custom protocols:
-
-```javascript
-filters: {
-  methodRegex: "^Serialize|^Deserialize|^Encode|^Decode"
-}
-```
-
-### State Management Investigation
-
-Track state changes by hooking setter methods and field updates:
-
-```javascript
-filters: {
-  methodRegex: "^set_|^Update"
-},
-hook: {
-  showStack: true  // See call chains leading to state changes
-}
-```
 
 ## Documentation
 

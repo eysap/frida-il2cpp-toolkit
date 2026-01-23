@@ -19,7 +19,7 @@
 
 const CONFIG = {
   target: {
-    assembly: null, // Example: "Core" or "Assembly-CSharp" (".dll" is ok too)
+    assembly: null, // Example: "Core", "Assembly-CSharp"
     namespace: null, // Example: "Com.Example.Network", "App.Core.Services"
     className: null, // Example: "ApiClient", "NetworkManager", "MessageHandler"
     fullName: null, // Example: "Com.Example.Network.ApiClient"
@@ -51,7 +51,7 @@ const CONFIG = {
     expandMultimap: true, // Try to summarize Multimap`2 containers
     logSpecials: true, // Extra logs for known method names
     dumpOnCall: false,
-    dumpTypes: ["bim", "bik", "clz"],
+    dumpTypes: [],
     dumpOncePerPtr: true,
     dumpMaxPerType: 20,
     dumpMaxFields: 30,
