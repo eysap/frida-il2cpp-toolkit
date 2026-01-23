@@ -6,6 +6,12 @@
 
 Modular Frida toolkit for dynamic analysis of Unity IL2CPP applications. Designed for reverse engineers and security researchers.
 
+## TL;DR
+- Modular Frida toolkit for Unity IL2CPP
+- Selective hooking of classes/methods with intelligent type analysis
+- Focus on stability, performance, and deep introspection
+- Designed for focused analysis, not blind mass-hooking
+
 ## Features
 
 ### Core Capabilities
@@ -16,7 +22,7 @@ Modular Frida toolkit for dynamic analysis of Unity IL2CPP applications. Designe
 - **HTTP Analysis**: Specialized handlers for API methods with request/response logging
 
 ### Analysis Features
-- **Method Hooking**: Rate-limited installation (up to 300 hooks, 25ms delay)
+- **Method Hooking**: Rate-limited installation to preserve IL2CPP stability (default: up to 300 hooks with 25ms delay)
 - **Argument Logging**: Type-aware formatting with configurable string truncation
 - **Return Value Tracking**: Full return value inspection with object previews
 - **Stack Traces**: Optional backtrace capture for debugging
@@ -34,10 +40,10 @@ Modular Frida toolkit for dynamic analysis of Unity IL2CPP applications. Designe
 scripts/class_hooker/
 ├── constants.js       # Memory offsets and safety limits
 ├── config.js         # User configuration
-├── utils.js          # Type checking, string handling, field reading
-├── formatters.js     # Argument/object formatting, dumping logic
+├── utils.js          # Type checking, string handling, field reading - Pure helpers (no Il2Cpp side effects)
+├── formatters.js     # Argument/object formatting, dumping logic - Rendering only (no memory reads)
 ├── http-analysis.js  # HTTP request/response analysis
-├── core.js          # Class selection and hook installation
+├── core.js          # Class selection and hook installation - Il2Cpp interaction + hook lifecycle
 └── index.js         # Main entry point and orchestration
 ```
 
