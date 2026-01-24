@@ -33,10 +33,16 @@
   const { LIMITS } = global.IL2CPPHooker;
 
   /**
+   * Get UI module reference
+   * @returns {Object} UI module
+   */
+  function getUI() {
+    return global.IL2CPPHooker.ui;
+  }
+
+  /**
    * Normalizes target configuration by extracting namespace/className from fullName
    * and removing .dll extension from assembly name if present
-   * @param {Object} cfg - Target configuration object
-   * @returns {Object} Normalized configuration
    */
   function normalizeTarget(cfg) {
     if (cfg.fullName && (!cfg.className || !cfg.namespace)) {
@@ -56,9 +62,6 @@
 
   /**
    * Checks if class matches target criteria
-   * @param {Il2Cpp.Class} klass - IL2CPP class object
-   * @param {Object} target - Target configuration
-   * @returns {boolean} True if class matches
    */
   function classMatches(klass, target) {
     const nameMatch = target.allowPartial
@@ -77,16 +80,16 @@
 
   /**
    * Searches for IL2CPP classes matching the target configuration
-   * @param {Object} target - Target configuration with optional assembly, namespace, className
-   * @returns {Object|null} Chosen class match with {assembly, klass} or null if none found
    */
   function selectClass(target) {
+    const ui = getUI();
     const assemblies = [];
+
     if (target.assembly) {
       try {
         assemblies.push(Il2Cpp.domain.assembly(target.assembly));
       } catch (_) {
-        console.log(`[!] Assembly not found: ${target.assembly}`);
+        ui.error(`Assembly not found: ${target.assembly}`);
         return null;
       }
     } else {
@@ -105,16 +108,15 @@
     });
 
     if (matches.length === 0) {
-      console.log("[!] No matching class found.");
+      ui.warn("No matching class found.");
+
       if (target.className) {
-        console.log("[*] Suggestions (class name contains):");
+        ui.info("Suggestions (class name contains):");
         assemblies.forEach((assembly) => {
           try {
             assembly.image.classes.forEach((klass) => {
               if (klass.name.includes(target.className)) {
-                console.log(
-                  `  ${assembly.name} -> ${klass.namespace}.${klass.name}`
-                );
+                ui.suggestion(`${assembly.name}`, `${klass.namespace}.${klass.name}`);
               }
             });
           } catch (_) {}
@@ -123,55 +125,52 @@
       return null;
     }
 
-    console.log(`[+] Found ${matches.length} matching class(es):`);
+    ui.info(`Found ${matches.length} matching class(es):`);
     matches.forEach((m, i) => {
-      console.log(
-        `  [${i}] ${m.assembly.name} -> ${m.klass.namespace}.${m.klass.name}`
-      );
+      ui.classMatch(i, m.assembly.name, `${m.klass.namespace}.${m.klass.name}`);
     });
 
     const pick = Math.min(Math.max(target.pickIndex || 0, 0), matches.length - 1);
     const chosen = matches[pick];
-    console.log(
-      `[+] Using [${pick}] ${chosen.assembly.name} -> ${chosen.klass.namespace}.${chosen.klass.name}`
-    );
+
+    ui.success(`Using [${pick}] ${chosen.assembly.name} -> ${chosen.klass.namespace}.${chosen.klass.name}`);
     return chosen;
   }
 
   /**
    * Lists all methods of a class with signatures
-   * @param {Il2Cpp.Class} klass - IL2CPP class object
    */
   function listMethods(klass) {
-    console.log("\n=== METHODS ===");
-    klass.methods.forEach((m, i) => {
+    const ui = getUI();
+    const methods = [];
+    klass.methods.forEach((m) => methods.push(m));
+
+    const classFullName = klass.namespace
+      ? `${klass.namespace}.${klass.name}`
+      : klass.name;
+
+    ui.methodListStart(classFullName, methods.length);
+
+    methods.forEach((m, i) => {
       const params = m.parameters
         .map((p) => `${p.type.name} ${p.name}`)
         .join(", ");
-      const sig = `${m.isStatic ? "static " : ""}${m.returnType.name} ${
-        m.name
-      }(${params})`;
-      const addr =
-        m.virtualAddress && !m.virtualAddress.isNull()
-          ? m.virtualAddress
-          : "null";
-      console.log(`  [${i}] ${sig} @ ${addr}`);
+      const sig = `${m.isStatic ? "static " : ""}${m.returnType.name} ${m.name}(${params})`;
+      const addr = m.virtualAddress && !m.virtualAddress.isNull()
+        ? m.virtualAddress.toString()
+        : null;
+      ui.methodListItem(i, sig, addr);
     });
-    console.log("=== END METHODS ===\n");
+
+    ui.methodListEnd();
   }
 
   /**
    * Builds list of methods to hook based on filters
-   * @param {Il2Cpp.Class} klass - IL2CPP class object
-   * @param {Object} filters - Filter configuration
-   * @returns {Array} Array of methods to hook
    */
   function buildHookList(klass, filters) {
     return klass.methods.filter((m) => {
-      if (
-        filters.methodNameContains &&
-        !m.name.includes(filters.methodNameContains)
-      ) {
+      if (filters.methodNameContains && !m.name.includes(filters.methodNameContains)) {
         return false;
       }
       if (filters.methodRegex) {
@@ -187,9 +186,6 @@
 
   /**
    * Checks if method should be analyzed with detailed logging
-   * @param {string} methodName - Method name
-   * @param {Array} list - List of method names to analyze
-   * @returns {boolean} True if should analyze
    */
   function isAnalyzeMethod(methodName, list) {
     if (!list || list.length === 0) return false;
@@ -198,12 +194,8 @@
 
   /**
    * Analyzes NewRequest method call for HTTP details
-   * @param {Object} method - Method object
-   * @param {Array} args - Method arguments
-   * @param {number} argStart - Argument start index
-   * @param {Object} config - Full configuration object
    */
-  function analyzeNewRequest(method, args, argStart, config) {
+  function analyzeNewRequest(method, args, argStart, config, httpContext) {
     const paramMap = {};
     method.parameters.forEach((p, i) => {
       const key = (p.name || "").toLowerCase();
@@ -223,49 +215,35 @@
       basePath = httpAnalysis.extractBasePathFromConfig(paramMap.configuration.ptr);
     }
     const optionsInfo = paramMap.options
-      ? httpAnalysis.extractOptionsDetails(paramMap.options.ptr,
-          formatters.getPreviewOptions(config))
+      ? httpAnalysis.extractOptionsDetails(
+          paramMap.options.ptr,
+          formatters.getPreviewOptions(config)
+        )
       : null;
 
     const methodUpper = httpMethod ? httpMethod.toUpperCase() : null;
     const wantsBody =
       methodUpper &&
-      (methodUpper === "POST" ||
-        methodUpper === "PUT" ||
-        methodUpper === "PATCH");
+      (methodUpper === "POST" || methodUpper === "PUT" || methodUpper === "PATCH");
 
-    if (httpMethod) {
-      console.log(`[INFO] method="${httpMethod}"`);
-    }
-    if (path) {
-      console.log(`[INFO] path="${path}"`);
-    }
-    if (basePath) {
-      console.log(`[INFO] basePath="${basePath}"`);
-    }
-    if (wantsBody) {
-      if (optionsInfo && optionsInfo.body) {
-        console.log(`[DATA] body=${optionsInfo.body}`);
-      } else if (optionsInfo && optionsInfo.form) {
-        console.log(`[DATA] form=${optionsInfo.form}`);
-      }
-    }
-    if (basePath && path) {
-      const url = httpAnalysis.buildUrl(basePath, path);
-      console.log(`[URL] ${url}`);
+    httpContext.method = httpMethod;
+    httpContext.path = path;
+    httpContext.basePath = basePath;
+    httpContext.url = basePath && path ? httpAnalysis.buildUrl(basePath, path) : null;
+
+    if (wantsBody && optionsInfo) {
+      httpContext.body = optionsInfo.body || optionsInfo.form || null;
     }
   }
 
   /**
    * Installs Frida interceptors on specified methods with rate limiting
-   * @param {Il2Cpp.Class} klass - IL2CPP class object
-   * @param {string} classFullName - Fully qualified class name for logging
-   * @param {Array} methods - Array of method objects to hook
-   * @param {Object} config - Full configuration object
    */
   function hookMethods(klass, classFullName, methods, config) {
+    const ui = getUI();
+
     if (!config.performance.enabled) {
-      console.log("[*] Hooking disabled.");
+      ui.warn("Hooking disabled.");
       return;
     }
 
@@ -273,14 +251,12 @@
     let hooked = 0;
     let failed = 0;
 
-    console.log(`[+] Hooking ${methods.length} methods (slow mode)...`);
+    ui.info(`Hooking ${methods.length} methods...`);
 
     const timer = setInterval(() => {
       if (idx >= methods.length || hooked >= config.performance.maxHooks) {
         clearInterval(timer);
-        console.log(
-          `[✓] Hooked ${hooked} methods (${failed} failed, ${methods.length} total)\n`
-        );
+        ui.hookSummary(hooked, failed, methods.length);
         return;
       }
 
@@ -288,32 +264,20 @@
       const sigParams = method.parameters
         .map((p) => `${p.type.name} ${p.name}`)
         .join(", ");
-      const sig = `${method.isStatic ? "static " : ""}${method.returnType.name} ${
-        method.name
-      }(${sigParams})`;
+      const sig = `${method.isStatic ? "static " : ""}${method.returnType.name} ${method.name}(${sigParams})`;
 
       try {
         Interceptor.attach(method.virtualAddress, {
-          onEnter: function (args) {
+          onEnter: function(args) {
             const argStart = method.isStatic ? 0 : 1;
-            const argParts = [];
-            const isNewRequest =
-              config.analysis.http.enabled && method.name === "NewRequest";
-            const sep = "----------------------------------------";
+            const isNewRequest = config.analysis.http.enabled && method.name === "NewRequest";
+            const httpContext = {};
 
-            if (isNewRequest) {
-              this.__req_block = true;
-              this.__req_sep = sep;
-              console.log(sep);
-            }
-
-            // Log arguments
+            // Prepare args for UI
+            const argsData = [];
             if (config.logging.args) {
               for (let i = 0; i < method.parameters.length; i++) {
-                if (i >= config.logging.maxArgs) {
-                  argParts.push("...");
-                  break;
-                }
+                if (i >= config.logging.maxArgs) break;
                 const p = method.parameters[i];
                 const argPtr = args[i + argStart];
                 const val = config.logging.rawArgs
@@ -324,24 +288,37 @@
                       config.formatting.strings.maxLength,
                       config
                     );
-                argParts.push(`${p.name || "arg" + i}=${val}`);
+                argsData.push({ name: p.name || `arg${i}`, value: val });
               }
             }
 
-            const thisInfo =
-              !method.isStatic && config.logging.showThis ? ` this=${args[0]}` : "";
+            const thisPtr = !method.isStatic && config.logging.showThis
+              ? args[0].toString()
+              : null;
 
-            const argsStr = config.logging.args ? argParts.join(", ") : "";
-            console.log(
-              `[CALL] ${classFullName}.${method.name}(${argsStr})${thisInfo}`
-            );
+            // Store context for onLeave
+            this.__ctx = {
+              isNewRequest,
+              httpContext,
+            };
 
-            // Custom method analysis (extensible)
+            if (isNewRequest) {
+              // HTTP block - collect data now, output in onLeave
+              analyzeNewRequest(method, args, argStart, config, httpContext);
+            } else {
+              // Regular hook call
+              ui.hookCall({
+                className: classFullName,
+                methodName: method.name,
+                args: argsData,
+                thisPtr,
+              });
+            }
+
+            // Custom method analysis
             if (isAnalyzeMethod(method.name, config.analysis.custom.methods)) {
-              console.log(sep);
-              console.log(`[ANALYZE] ${classFullName}.${method.name}`);
-              // Add custom analysis logic here
-              console.log(sep);
+              ui.analyzeStart(method.name);
+              ui.analyzeEnd();
             }
 
             // Dump objects if configured
@@ -355,82 +332,72 @@
               }
             }
 
-            // Special handling for NewRequest (HTTP analysis)
-            if (isNewRequest) {
-              analyzeNewRequest(method, args, argStart, config);
-            }
-
             // Stack trace if enabled
             if (config.logging.showStack) {
               const stack = Thread.backtrace(this.context, Backtracer.ACCURATE)
                 .slice(0, LIMITS.MAX_BACKTRACE_DEPTH)
                 .map(DebugSymbol.fromAddress)
                 .join("\n");
-              console.log(stack);
+              ui.stackTrace(stack);
             }
           },
-          onLeave: function (retval) {
-            // Log return value
-            if (config.logging.return) {
+
+          onLeave: function(retval) {
+            const { isNewRequest, httpContext } = this.__ctx;
+
+            if (isNewRequest) {
+              // Complete HTTP block
+              const info = httpAnalysis.extractRequestSummary(retval, {
+                maxStringLength: config.formatting.strings.maxLength,
+                reqToStringMaxLen: config.formatting.strings.httpMaxLength,
+              });
+
+              ui.httpBlock({
+                method: httpContext.method,
+                path: httpContext.path,
+                url: httpContext.url,
+                body: httpContext.body,
+                headers: info?.headersBlock,
+              });
+            } else if (config.logging.return) {
               const ret = formatters.formatReturn(
                 retval,
                 method.returnType.name,
                 config.formatting.strings.maxLength,
                 config
               );
-              console.log(`[RET] ${classFullName}.${method.name} -> ${ret}`);
-            }
-
-            // Special handling for NewRequest response
-            if (config.analysis.http.enabled && method.name === "NewRequest") {
-              const sep = this.__req_sep || "----------------------------------------";
-              const info = httpAnalysis.extractRequestSummary(retval, {
-                maxStringLength: config.formatting.strings.maxLength,
-                reqToStringMaxLen: config.formatting.strings.httpMaxLength,
+              ui.hookReturn({
+                className: classFullName,
+                methodName: method.name,
+                value: ret,
               });
-              if (info) {
-                if (info.method || info.uri) {
-                  console.log(
-                    `[REQ] method="${info.method || ""}" uri="${info.uri || ""}"`
-                  );
-                }
-                if (info.headersBlock) {
-                  console.log("[REQ] headers:");
-                  console.log(info.headersBlock);
-                }
-              }
-              if (this.__req_block) {
-                console.log(sep);
-                this.__req_block = false;
-              }
             }
 
-            // Special handling for API response methods
+            // API response methods
             if (
               config.analysis.http.enabled &&
-              (method.name.includes("CallApi") ||
-                method.name.includes("SendAsync"))
+              (method.name.includes("CallApi") || method.name.includes("SendAsync"))
             ) {
               const summary = httpAnalysis.extractResponseSummary(retval, {
                 maxStringLength: config.formatting.strings.maxLength,
               });
               if (summary) {
-                console.log(`[RESP] ${summary}`);
+                ui.httpResponse(summary);
               }
             }
           },
         });
 
         hooked++;
-        console.log(`[+] Hooked: ${sig}`);
+        ui.hookInstalled(sig);
       } catch (e) {
         failed++;
-        console.log(`[!] Failed: ${sig} (${e.message})`);
+        ui.hookFailed(sig, e.message);
       }
     }, config.performance.hookDelayMs);
   }
 
-  // Export to global scope
+  // Export
   global.IL2CPPHooker = global.IL2CPPHooker || {};
   global.IL2CPPHooker.core = {
     normalizeTarget,

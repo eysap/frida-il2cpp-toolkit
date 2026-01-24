@@ -290,29 +290,37 @@
       ? `${obj.class.namespace}.${obj.class.name}`
       : obj.class.name;
 
-    console.log(`==== DUMP ${typeName} @ ${ptr} (${className}) ====`);
-
+    const ui = global.IL2CPPHooker.ui;
+    const fields = [];
+    let truncated = false;
     let printed = 0;
+
     try {
       for (const field of obj.class.fields) {
         if (!opts.includeStatic && field.isStatic) continue;
         if (printed >= opts.maxFields) {
-          console.log("  ...");
+          truncated = true;
           break;
         }
 
         try {
           const value = obj.field(field.name).value;
           const summary = summarizeFieldValue(value, field.type.name, opts);
-          console.log(`  ${field.name}: ${summary}`);
+          fields.push({ name: field.name, value: summary });
           printed++;
         } catch (_) {}
       }
     } catch (e) {
-      console.log(`  [ERROR] Cannot read fields: ${e.message}`);
+      fields.push({ name: 'ERROR', value: `Cannot read fields: ${e.message}` });
     }
 
-    console.log("==== END DUMP ====");
+    ui.dumpBlock({
+      typeName,
+      ptr: ptr.toString(),
+      className: className !== typeName ? className : null,
+      fields,
+      truncated,
+    });
   }
 
   // Export to global scope

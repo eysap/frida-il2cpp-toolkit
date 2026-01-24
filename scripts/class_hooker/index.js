@@ -12,62 +12,72 @@
  * - Rate-limited hook installation for stability (300 max hooks, 25ms delay)
  * - Configurable logging (args, return values, stack traces, object field preview)
  * - HTTP request/response analysis support
+ * - Modern UI output with colors, box-drawing, and structured formatting
  *
  * Usage:
  *   1. Configure target in config.js (className or fullName required)
  *   2. Optional: Set filters for method selection
  *   3. Load all module files in order:
  *      frida -l constants.js -l config.js -l utils.js -l formatters.js \
- *            -l http-analysis.js -l core.js -l index.js -p <pid>
+ *            -l http-analysis.js -l ui/colors.js -l ui/box.js -l ui/index.js \
+ *            -l core.js -l index.js -p <pid>
  *
  * @module index
  */
 
 (function(global) {
-  // Ensure all dependencies are loaded
-  if (!global.IL2CPPHooker ||
-      !global.IL2CPPHooker.CONFIG ||
-      !global.IL2CPPHooker.core ||
-      !global.IL2CPPHooker.utils ||
-      !global.IL2CPPHooker.formatters) {
-    console.log("[!] ERROR: Dependencies not loaded. Load modules in this order:");
-    console.log("    1. constants.js");
-    console.log("    2. config.js");
-    console.log("    3. utils.js");
-    console.log("    4. formatters.js");
-    console.log("    5. http-analysis.js");
-    console.log("    6. core.js");
-    console.log("    7. index.js (this file)");
+  const hooker = global.IL2CPPHooker;
+
+  // Validate all required modules are loaded
+  const required = ['CONFIG', 'core', 'utils', 'formatters', 'ui'];
+  const missing = required.filter(m => !hooker || !hooker[m]);
+
+  if (missing.length > 0) {
+    console.log(`[FATAL] Missing modules: ${missing.join(', ')}`);
+    console.log('');
+    console.log('Load order:');
+    console.log('  1. constants.js');
+    console.log('  2. config.js');
+    console.log('  3. utils.js');
+    console.log('  4. formatters.js');
+    console.log('  5. http-analysis.js');
+    console.log('  6. ui/colors.js');
+    console.log('  7. ui/box.js');
+    console.log('  8. ui/index.js');
+    console.log('  9. core.js');
+    console.log(' 10. index.js');
     return;
   }
 
-  const CONFIG = global.IL2CPPHooker.CONFIG;
-  const core = global.IL2CPPHooker.core;
+  const CONFIG = hooker.CONFIG;
+  const core = hooker.core;
+  const ui = hooker.ui;
 
   /**
    * Main execution function
    */
   function main() {
-    console.log("[+] Frida IL2CPP Class Hooker - Modular Edition");
-
     // Prevent duplicate initialization
     if (global.__frida_il2cpp_hooker_initialized) {
-      console.log("[!] Already initialized, skipping duplicate run.");
+      ui.warn("Already initialized, skipping duplicate run.");
       return;
     }
     global.__frida_il2cpp_hooker_initialized = true;
 
+    // Initialize UI module
+    ui.init(CONFIG.ui);
+
     // Normalize and validate target configuration
     const target = core.normalizeTarget(CONFIG.target);
     if (!target.className) {
-      console.log("[!] Please set target.className or target.fullName in config.js");
+      ui.error("Please set target.className or target.fullName in config.js");
       return;
     }
 
     // Select target class
     const chosen = core.selectClass(target);
     if (!chosen) {
-      console.log("[!] Class selection failed. Check configuration and try again.");
+      ui.error("Class selection failed. Check configuration and try again.");
       return;
     }
 
@@ -76,12 +86,20 @@
       ? `${klass.namespace}.${klass.name}`
       : klass.name;
 
+    // Build hook list based on filters
+    const methodsToHook = core.buildHookList(klass, CONFIG.filters);
+
+    // Display banner
+    ui.banner({
+      target: classFullName,
+      assembly: chosen.assembly.name,
+      methodCount: methodsToHook.length,
+    });
+
     // List all methods
     core.listMethods(klass);
 
-    // Build hook list based on filters
-    const methodsToHook = core.buildHookList(klass, CONFIG.filters);
-    console.log(`[+] Selected ${methodsToHook.length} methods to hook`);
+    ui.info(`Selected ${methodsToHook.length} methods to hook`);
 
     // Install hooks
     core.hookMethods(klass, classFullName, methodsToHook, CONFIG);
@@ -92,7 +110,7 @@
     try {
       main();
     } catch (e) {
-      console.log(`[!] Error during execution: ${e.message}`);
+      ui.error(`Execution error: ${e.message}`);
       console.log(e.stack);
     }
   });

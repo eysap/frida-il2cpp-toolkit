@@ -21,7 +21,7 @@
     target: {
       assembly: null, // Optional: "Core", "Assembly-CSharp"
       namespace: null, // Optional: "Com.Example.Network"
-      className: null, // Required: "ApiClient"
+      className: "gso", // Required: "ApiClient"
       fullName: null, // Alternative: "Com.Example.Network.ApiClient"
       pickIndex: 0, // If multiple matches, select this index
       allowPartial: false, // Enable substring matching
@@ -95,6 +95,42 @@
       custom: {
         methods: [], // Method names for detailed analysis
         // Example: ["ProcessTransaction", "UpdateBalance"]
+      },
+    },
+
+    ui: {
+      verbosity: "verbose", // "minimal" | "normal" | "verbose"
+      // minimal: single line per call
+      // normal: structured output with tree formatting
+      // verbose: full details + pointers + stack traces
+
+      colors: {
+        enabled: true, // ANSI color support
+        palette: {
+          // Override default colors (optional)
+          // error:   "red",
+          // warn:    "yellow",
+          // success: "green",
+          // url:     "cyan",
+          // type:    "magenta",
+          // key:     "blue",
+          // value:   "white",
+          // muted:   "gray",
+        },
+      },
+
+      timestamp: {
+        enabled: true, // Show relative timestamps
+      },
+
+      truncation: {
+        maxStringLength: 80, // Default string truncation
+        maxBodyLength: 200, // HTTP body truncation
+        ellipsis: "...",
+      },
+
+      banner: {
+        enabled: true, // Show startup banner
       },
     },
   };
