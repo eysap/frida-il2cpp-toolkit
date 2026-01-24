@@ -8,8 +8,28 @@
 (function(global) {
   const utils = global.IL2CPPHooker.utils;
 
+  let cachedPreviewConfig = null;
+  let cachedPreviewOptions = null;
+
+  function buildRegexList(patterns) {
+    if (!Array.isArray(patterns)) return [];
+    return patterns
+      .map((p) => {
+        try {
+          return new RegExp(p);
+        } catch (_) {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  }
+
   function getPreviewOptions(config) {
-    return {
+    if (config === cachedPreviewConfig && cachedPreviewOptions) {
+      return cachedPreviewOptions;
+    }
+    cachedPreviewConfig = config;
+    cachedPreviewOptions = {
       tryToString: config.formatting.objects.tryToString,
       previewObjects: config.formatting.objects.showFields,
       maxObjectFields: config.formatting.objects.maxFields,
@@ -18,7 +38,12 @@
       maxDictEntries: config.formatting.collections.dictionaries.maxEntries,
       expandLists: config.formatting.collections.lists.enabled,
       expandMultimap: config.formatting.collections.multimaps.enabled,
+      omitFields: config.formatting.objects.omitFields || [],
+      omitFieldRegex: buildRegexList(config.formatting.objects.omitFieldPatterns),
+      fieldAllowlistByType: config.formatting.objects.fieldAllowlistByType || {},
+      fieldDenylistByType: config.formatting.objects.fieldDenylistByType || {},
     };
+    return cachedPreviewOptions;
   }
 
   function isBufferFieldName(fieldName) {
@@ -37,6 +62,37 @@
 
   function isArrayType(typeName) {
     return typeName && typeName.includes("[") && typeName.includes("]");
+  }
+
+  function isByRefType(typeName) {
+    return typeof typeName === "string" && typeName.endsWith("&");
+  }
+
+  function formatStringValue(ptr, maxLen) {
+    if (!ptr || ptr.isNull()) return "null";
+    const raw = utils.tryReadString(ptr);
+    if (raw === null) return ptr.toString();
+    const truncated = raw.length > maxLen ? raw.slice(0, maxLen) + "..." : raw;
+    return `"${truncated}" len=${raw.length}`;
+  }
+
+  function formatByRefValue(ptr, typeName) {
+    if (!ptr || ptr.isNull()) return "null";
+    return `${typeName}@${ptr} (ref)`;
+  }
+
+  function shouldIncludeField(classInfo, fieldName, opts) {
+    if (!fieldName) return false;
+    const fullName = classInfo?.fullName || "";
+    const allowlist = opts.fieldAllowlistByType?.[fullName];
+    if (Array.isArray(allowlist) && allowlist.length > 0) {
+      return allowlist.includes(fieldName);
+    }
+    const denylist = opts.fieldDenylistByType?.[fullName];
+    if (Array.isArray(denylist) && denylist.includes(fieldName)) return false;
+    if (opts.omitFields && opts.omitFields.includes(fieldName)) return false;
+    if (opts.omitFieldRegex && opts.omitFieldRegex.some((re) => re.test(fieldName))) return false;
+    return true;
   }
 
   function safeValueToString(value, maxLen) {
@@ -104,7 +160,7 @@
     const valuePtr = value;
 
     if (utils.isStringType(typeName)) {
-      return utils.safeString(valuePtr, opts.maxStringLength);
+      return formatStringValue(valuePtr, opts.maxStringLength);
     }
     if (typeName === "Boolean") {
       try {
@@ -165,6 +221,11 @@
       return `<inaccessible>@${ptr}`;
     }
 
+    if (utils.isStringType(classInfo.fullName)) {
+      const strVal = formatStringValue(ptr, opts.maxStringLength);
+      return `${classInfo.fullName}@${ptr} ${strVal}`;
+    }
+
     // Handle collection types
     if (opts.expandDictionaries && utils.isDictionaryClass(obj.class)) {
       return utils.readDictionarySummary(ptr, opts.maxDictEntries) || `${classInfo.name}@${ptr}`;
@@ -194,6 +255,7 @@
       for (const field of obj.class.fields) {
         if (field.isStatic) continue;
         if (fields.length >= opts.maxObjectFields) break;
+        if (!shouldIncludeField(classInfo, field.name, opts)) continue;
 
         const typeName = field.type.name || "";
 
@@ -240,6 +302,10 @@
   function formatArg(argPtr, typeName, maxStrLen, config) {
     if (!argPtr || argPtr.isNull()) return "null";
 
+    if (isByRefType(typeName)) {
+      return formatByRefValue(argPtr, typeName);
+    }
+
     if (isByteArrayType(typeName)) {
       return utils.readByteArraySummary(argPtr, 20) || "Byte[]";
     }
@@ -255,7 +321,7 @@
     }
 
     if (utils.isStringType(typeName)) {
-      return utils.safeString(argPtr, maxStrLen);
+      return formatStringValue(argPtr, maxStrLen);
     }
 
     switch (typeName) {
@@ -298,7 +364,7 @@
       return typeName;
     }
 
-    if (utils.isStringType(typeName)) return utils.safeString(retval, maxStrLen);
+    if (utils.isStringType(typeName)) return formatStringValue(retval, maxStrLen);
     if (typeName === "Boolean") return retval.toInt32() !== 0 ? "true" : "false";
     if (typeName === "Int32") return retval.toInt32().toString();
     if (typeName === "UInt32") return retval.toUInt32().toString();

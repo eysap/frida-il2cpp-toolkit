@@ -21,7 +21,7 @@
     target: {
       assembly: null, // Optional: "Core", "Assembly-CSharp"
       namespace: null, // Optional: "Com.Example.Network"
-      className: "jrp", // Required: "ApiClient"
+      className: "gso", // Required: "ApiClient"
       fullName: null, // Alternative: "Com.Example.Network.ApiClient"
       pickIndex: 0, // If multiple matches, select this index
       allowPartial: false, // Enable substring matching
@@ -59,6 +59,12 @@
         tryToString: true, // Invoke managed ToString() method
         showFields: true, // Display shallow field preview
         maxFields: 6, // Maximum fields in preview
+        omitFields: [], // Field names to hide in previews
+        omitFieldPatterns: ["^<.*>k__BackingField$"], // Regex patterns to hide noise
+        fieldAllowlistByType: {
+          "Google.Protobuf.CodedOutputStream": ["leaveOpen", "buffer"],
+        },
+        fieldDenylistByType: {},
       },
 
       // Collection expansion
@@ -103,6 +109,9 @@
       // minimal: single line per call
       // normal: structured output with tree formatting
       // verbose: full details + pointers + stack traces
+      instanceIds: {
+        enabled: true, // Tag instances as Class#N for quick visual grouping
+      },
 
       colors: {
         enabled: true, // ANSI color support

@@ -41,7 +41,7 @@
   }
 
   function hasInlineType(val) {
-    return typeof val === "string" && /[A-Za-z0-9_.`]+@0x[0-9a-fA-F]+/.test(val);
+    return typeof val === "string" && /[A-Za-z0-9_.`&]+@0x[0-9a-fA-F]+/.test(val);
   }
 
   function stripPointer(val, ptrStr) {

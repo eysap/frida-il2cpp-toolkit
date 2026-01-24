@@ -25,6 +25,8 @@
   let config = null;
   let startTime = null;
   let blockCounter = 0;
+  let instanceIds = null;
+  let nextInstanceId = 0;
 
   // Verbosity levels
   const VERBOSITY = {
@@ -42,6 +44,8 @@
     colors.init(config.colors);
     startTime = Date.now();
     blockCounter = 0;
+    instanceIds = new Map();
+    nextInstanceId = 0;
   }
 
   /**
@@ -211,6 +215,28 @@
     return `${c.key(paddedKey)} : ${value}`;
   }
 
+  function getInstanceId(ptr) {
+    if (!ptr || !config.instanceIds?.enabled) return null;
+    if (instanceIds.has(ptr)) return instanceIds.get(ptr);
+    nextInstanceId += 1;
+    instanceIds.set(ptr, nextInstanceId);
+    return nextInstanceId;
+  }
+
+  function formatClassName(className, thisPtr) {
+    const id = getInstanceId(thisPtr);
+    return c.type(id ? `${className}#${id}` : className);
+  }
+
+  function formatThisValue(className, thisPtr) {
+    if (!thisPtr) return null;
+    const id = getInstanceId(thisPtr);
+    if (id) {
+      return `${c.number(`#${id}`)} ${c.ptr(`@${thisPtr}`)}`;
+    }
+    return c.ptr(thisPtr);
+  }
+
   /**
    * Log method call (onEnter)
    * @param {Object} opts - Call options
@@ -218,11 +244,12 @@
    * @param {string} opts.methodName - Method name
    * @param {Array} opts.args - Array of {name, value} pairs
    * @param {string} opts.thisPtr - This pointer (optional)
+   * @param {boolean} opts.showThis - Show 'this' line
    */
   function hookCall(opts) {
     const v = getVerbosity();
     const ts = timestamp();
-    const method = `${c.type(opts.className)}.${c.method(opts.methodName)}`;
+    const method = `${formatClassName(opts.className, opts.thisPtr)}.${c.method(opts.methodName)}`;
 
     if (v === VERBOSITY.minimal) {
       // Minimal: single line
@@ -245,8 +272,9 @@
       });
     }
 
-    if (opts.thisPtr) {
-      console.log(`  ${BOX.tree.last} ${c.key('this')}    : ${c.ptr(opts.thisPtr)}`);
+    if (opts.showThis && opts.thisPtr) {
+      const thisVal = formatThisValue(opts.className, opts.thisPtr);
+      console.log(`  ${BOX.tree.last} ${c.key('this')}    : ${thisVal}`);
     }
   }
 

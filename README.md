@@ -215,6 +215,12 @@ formatting: {
     tryToString: true,                // Invoke managed ToString() method
     showFields: true,                 // Display shallow field preview
     maxFields: 6,                     // Maximum fields in preview
+    omitFields: [],                   // Field names to hide in previews
+    omitFieldPatterns: ["^<.*>k__BackingField$"], // Regex patterns to hide noise
+    fieldAllowlistByType: {
+      "Google.Protobuf.CodedOutputStream": ["leaveOpen", "buffer"],
+    },
+    fieldDenylistByType: {},
   },
   collections: {
     dictionaries: {
@@ -254,6 +260,31 @@ analysis: {
   custom: {
     methods: [],                      // Method names for detailed analysis
                                       // Example: ["ProcessTransaction", "UpdateBalance"]
+  },
+}
+```
+
+### UI Configuration
+
+```javascript
+ui: {
+  verbosity: "verbose",               // "minimal" | "normal" | "verbose"
+  instanceIds: {
+    enabled: true,                    // Tag instances as Class#N for quick grouping
+  },
+  colors: {
+    enabled: true,
+  },
+  timestamp: {
+    enabled: true,
+  },
+  truncation: {
+    maxStringLength: 80,
+    maxBodyLength: 200,
+    ellipsis: "...",
+  },
+  banner: {
+    enabled: true,
   },
 }
 ```

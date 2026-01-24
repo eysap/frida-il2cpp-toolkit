@@ -65,7 +65,7 @@
   const classTypeCache = new Map();
 
   function isStringType(typeName) {
-    return /(^|\\.)String(&|$)/.test(typeName);
+    return /(^|\.)String(&|$)/.test(typeName);
   }
 
   function safeClassInfo(klass) {
