@@ -73,12 +73,16 @@
 
   /**
    * Truncate string with ellipsis
+   * Verbose mode uses longer limits
    * @param {string} str - String to truncate
    * @param {number} max - Maximum length (uses config default if not specified)
    * @returns {string} Truncated string
    */
   function truncate(str, max) {
-    const limit = max || config.truncation?.maxStringLength || 80;
+    const isVerbose = getVerbosity() === VERBOSITY.verbose;
+    // In verbose mode, use much higher limits
+    const defaultLimit = isVerbose ? 200 : (config.truncation?.maxStringLength || 80);
+    const limit = max || defaultLimit;
     const ellipsis = config.truncation?.ellipsis || '...';
     if (!str || str.length <= limit) return str;
     return str.slice(0, limit - ellipsis.length) + ellipsis;
@@ -236,7 +240,7 @@
       opts.args.forEach((arg, i) => {
         const isLast = i === opts.args.length - 1 && !opts.thisPtr;
         const branch = isLast ? BOX.tree.last : BOX.tree.branch;
-        const val = v === VERBOSITY.verbose ? arg.value : truncate(arg.value, 60);
+        const val = v === VERBOSITY.verbose ? arg.value : truncate(arg.value, 100);
         console.log(`  ${branch} ${formatKV(arg.name, val, maxKeyLen)}`);
       });
     }
@@ -255,7 +259,7 @@
    */
   function hookReturn(opts) {
     const v = getVerbosity();
-    const val = v === VERBOSITY.verbose ? opts.value : truncate(opts.value, 80);
+    const val = v === VERBOSITY.verbose ? opts.value : truncate(opts.value, 120);
 
     if (v === VERBOSITY.minimal) {
       console.log(`  ${BOX.arrow.returns} ${val}`);

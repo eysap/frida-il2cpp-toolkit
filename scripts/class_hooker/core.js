@@ -275,19 +275,32 @@
 
             // Prepare args for UI
             const argsData = [];
+            const isVerbose = config.ui?.verbosity === 'verbose';
+
             if (config.logging.args) {
               for (let i = 0; i < method.parameters.length; i++) {
                 if (i >= config.logging.maxArgs) break;
                 const p = method.parameters[i];
                 const argPtr = args[i + argStart];
-                const val = config.logging.rawArgs
-                  ? formatters.formatArgRaw(argPtr, p.type.name)
-                  : formatters.formatArg(
-                      argPtr,
-                      p.type.name,
-                      config.formatting.strings.maxLength,
-                      config
-                    );
+
+                let val;
+                if (config.logging.rawArgs && !isVerbose) {
+                  // Raw mode (safe): just TypeName@pointer
+                  val = formatters.formatArgRaw(argPtr, p.type.name);
+                } else {
+                  // Full preview with object fields
+                  val = formatters.formatArg(
+                    argPtr,
+                    p.type.name,
+                    config.formatting.strings.maxLength,
+                    config
+                  );
+                  // In verbose mode with rawArgs, prepend pointer for reference
+                  if (isVerbose && config.logging.rawArgs) {
+                    const raw = formatters.formatArgRaw(argPtr, p.type.name);
+                    val = `${raw} ${val}`;
+                  }
+                }
                 argsData.push({ name: p.name || `arg${i}`, value: val });
               }
             }
