@@ -40,6 +40,25 @@
     return global.IL2CPPHooker.ui;
   }
 
+  function hasInlineType(val) {
+    return typeof val === "string" && /[A-Za-z0-9_.`]+@0x[0-9a-fA-F]+/.test(val);
+  }
+
+  function stripPointer(val, ptrStr) {
+    if (typeof val !== "string" || !ptrStr) return val;
+    let cleaned = val.replace(`@${ptrStr}`, "");
+    cleaned = cleaned.replace(ptrStr, "");
+    return cleaned.trim();
+  }
+
+  function mergeVerboseRaw(raw, val, ptrStr) {
+    if (val === "null") return val;
+    if (!raw || !val || !ptrStr) return val || raw;
+    if (hasInlineType(val)) return val;
+    const cleaned = stripPointer(val, ptrStr);
+    return cleaned ? `${raw} ${cleaned}` : raw;
+  }
+
   /**
    * Normalizes target configuration by extracting namespace/className from fullName
    * and removing .dll extension from assembly name if present
@@ -295,10 +314,11 @@
                     config.formatting.strings.maxLength,
                     config
                   );
-                  // In verbose mode with rawArgs, prepend pointer for reference
+                  // In verbose mode with rawArgs, merge raw pointer/type once
                   if (isVerbose && config.logging.rawArgs) {
                     const raw = formatters.formatArgRaw(argPtr, p.type.name);
-                    val = `${raw} ${val}`;
+                    const ptrStr = argPtr ? argPtr.toString() : null;
+                    val = mergeVerboseRaw(raw, val, ptrStr);
                   }
                 }
                 argsData.push({ name: p.name || `arg${i}`, value: val });
