@@ -112,6 +112,11 @@
       instanceIds: {
         enabled: true, // Tag instances as Class#N for quick visual grouping
       },
+      collapse: {
+        enabled: true, // Collapse rapid repeated calls
+        windowMs: 50, // Time window to consider calls repeated
+        minRepeat: 2, // Minimum repeats before summary line
+      },
 
       colors: {
         enabled: true, // ANSI color support

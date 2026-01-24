@@ -27,6 +27,11 @@
   let blockCounter = 0;
   let instanceIds = null;
   let nextInstanceId = 0;
+  let lastCallKey = null;
+  let lastCallAt = 0;
+  let lastCallStartAt = 0;
+  let repeatCount = 0;
+  let lastCallLabel = null;
 
   // Verbosity levels
   const VERBOSITY = {
@@ -46,6 +51,11 @@
     blockCounter = 0;
     instanceIds = new Map();
     nextInstanceId = 0;
+    lastCallKey = null;
+    lastCallAt = 0;
+    lastCallStartAt = 0;
+    repeatCount = 0;
+    lastCallLabel = null;
   }
 
   /**
@@ -215,6 +225,26 @@
     return `${c.key(paddedKey)} : ${value}`;
   }
 
+  function buildCallKey(opts) {
+    const argsKey = opts.args
+      ? opts.args.map(a => `${a.name}=${a.value}`).join('|')
+      : '';
+    return `${opts.className}|${opts.methodName}|${opts.thisPtr || ''}|${argsKey}`;
+  }
+
+  function flushRepeatSummary() {
+    if (!config.collapse?.enabled) return;
+    const minRepeat = config.collapse?.minRepeat ?? 2;
+    if (repeatCount < minRepeat || !lastCallLabel) {
+      repeatCount = 0;
+      return;
+    }
+    const durationMs = lastCallAt && lastCallStartAt ? lastCallAt - lastCallStartAt : 0;
+    const duration = durationMs > 0 ? ` in ${durationMs}ms` : '';
+    console.log(`${timestamp()} ${c.muted('↻')} ${lastCallLabel} ${c.muted(`x${repeatCount} repeats${duration}`)}`);
+    repeatCount = 0;
+  }
+
   function getInstanceId(ptr) {
     if (!ptr || !config.instanceIds?.enabled) return null;
     if (instanceIds.has(ptr)) return instanceIds.get(ptr);
@@ -250,6 +280,22 @@
     const v = getVerbosity();
     const ts = timestamp();
     const method = `${formatClassName(opts.className, opts.thisPtr)}.${c.method(opts.methodName)}`;
+    if (config.collapse?.enabled) {
+      const now = Date.now();
+      const key = buildCallKey(opts);
+      const windowMs = config.collapse?.windowMs ?? 50;
+      if (lastCallKey === key && now - lastCallAt <= windowMs) {
+        repeatCount += 1;
+        lastCallAt = now;
+        return;
+      }
+      flushRepeatSummary();
+      lastCallKey = key;
+      lastCallAt = now;
+      lastCallStartAt = now;
+      repeatCount = 0;
+      lastCallLabel = method;
+    }
 
     if (v === VERBOSITY.minimal) {
       // Minimal: single line

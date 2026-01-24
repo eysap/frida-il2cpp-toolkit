@@ -24,6 +24,77 @@
       .filter(Boolean);
   }
 
+  function normalizeTypeName(typeName) {
+    if (!typeName || typeof typeName !== "string") return "";
+    return typeName.replace(/^.*\./, "");
+  }
+
+  function isPrimitiveName(baseName) {
+    switch (baseName) {
+      case "Boolean":
+      case "Int32":
+      case "UInt32":
+      case "Int64":
+      case "UInt64":
+      case "Int16":
+      case "UInt16":
+      case "SByte":
+      case "Byte":
+      case "Char":
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  function formatPrimitivePtr(ptr, baseName) {
+    if (!ptr) return "null";
+    try {
+      switch (baseName) {
+        case "Boolean":
+          return ptr.toInt32() !== 0 ? "true" : "false";
+        case "Int64":
+          return ptr.toInt64().toString();
+        case "UInt64":
+          return ptr.toUInt64().toString();
+        case "Int32":
+        case "Int16":
+        case "SByte":
+          return ptr.toInt32().toString();
+        case "UInt32":
+        case "UInt16":
+        case "Byte":
+        case "Char":
+          return ptr.toUInt32().toString();
+        default:
+          return ptr.toString();
+      }
+    } catch (_) {
+      return ptr.toString();
+    }
+  }
+
+  function formatPrimitiveValue(value, baseName) {
+    if (value === null || value === undefined) return "null";
+    if (typeof value === "boolean") return value ? "true" : "false";
+    if (typeof value === "number") return value.toString();
+    if (typeof value === "string") return value;
+    if (value && typeof value.toInt32 === "function") {
+      return formatPrimitivePtr(value, baseName);
+    }
+    return safeValueToString(value, 50);
+  }
+
+  function formatEnumValue(type, ptr) {
+    if (!type || !type.class || !type.class.isEnum) return null;
+    const enumClass = type.class;
+    const baseType = enumClass.baseType;
+    const baseName = normalizeTypeName(baseType ? baseType.name : "");
+    const raw = formatPrimitivePtr(ptr, baseName || "Int32");
+    const fullName = enumClass.namespace ? `${enumClass.namespace}.${enumClass.name}` : enumClass.name;
+    return `${fullName}(${raw})`;
+  }
+
   function getPreviewOptions(config) {
     if (config === cachedPreviewConfig && cachedPreviewOptions) {
       return cachedPreviewOptions;
@@ -157,24 +228,14 @@
       return typeName;
     }
 
+    const baseName = normalizeTypeName(typeName);
     const valuePtr = value;
 
     if (utils.isStringType(typeName)) {
       return formatStringValue(valuePtr, opts.maxStringLength);
     }
-    if (typeName === "Boolean") {
-      try {
-        return valuePtr.toInt32() !== 0 ? "true" : "false";
-      } catch (_) {
-        return safeValueToString(value, 50);
-      }
-    }
-    if (typeName === "Int32" || typeName === "UInt32") {
-      try {
-        return valuePtr.toInt32().toString();
-      } catch (_) {
-        return safeValueToString(value, 50);
-      }
+    if (isPrimitiveName(baseName)) {
+      return formatPrimitiveValue(value, baseName);
     }
 
     try {
@@ -302,12 +363,15 @@
       : `${classInfo.fullName}@${ptr}${preview}`;
   }
 
-  function formatArg(argPtr, typeName, maxStrLen, config) {
-    if (!argPtr || argPtr.isNull()) return "null";
+  function formatArg(argPtr, typeName, maxStrLen, config, type) {
+    if (!argPtr) return "null";
 
     if (isByRefType(typeName)) {
-      return formatByRefValue(argPtr, typeName);
+      return argPtr.isNull && argPtr.isNull() ? "null" : formatByRefValue(argPtr, typeName);
     }
+
+    const enumVal = formatEnumValue(type, argPtr);
+    if (enumVal) return enumVal;
 
     if (isByteArrayType(typeName)) {
       return utils.readByteArraySummary(argPtr, 20) || "Byte[]";
@@ -324,34 +388,36 @@
     }
 
     if (utils.isStringType(typeName)) {
-      return formatStringValue(argPtr, maxStrLen);
+      return argPtr.isNull && argPtr.isNull() ? "null" : formatStringValue(argPtr, maxStrLen);
     }
 
-    switch (typeName) {
-      case "Boolean":
-        return argPtr.toInt32() !== 0 ? "true" : "false";
-      case "Int32":
-        return argPtr.toInt32().toString();
-      case "UInt32":
-        return argPtr.toUInt32().toString();
-      case "Int64":
-      case "UInt64":
-      case "Single":
-      case "Double":
-        return argPtr.toString();
-      default:
-        return previewObject(argPtr, getPreviewOptions(config));
+    const baseName = normalizeTypeName(typeName);
+    if (isPrimitiveName(baseName)) {
+      return formatPrimitivePtr(argPtr, baseName);
     }
+
+    if (argPtr.isNull && argPtr.isNull()) return "null";
+    return previewObject(argPtr, getPreviewOptions(config));
   }
 
-  function formatArgRaw(argPtr, typeName) {
-    if (!argPtr || argPtr.isNull()) return "null";
+  function formatArgRaw(argPtr, typeName, type) {
+    if (!argPtr) return "null";
+    const enumVal = formatEnumValue(type, argPtr);
+    if (enumVal) return enumVal;
+    const baseName = normalizeTypeName(typeName);
+    if (isPrimitiveName(baseName)) {
+      return `${typeName}(${formatPrimitivePtr(argPtr, baseName)})`;
+    }
+    if (argPtr.isNull && argPtr.isNull()) return "null";
     return `${typeName}@${argPtr}`;
   }
 
-  function formatReturn(retval, typeName, maxStrLen, config) {
+  function formatReturn(retval, typeName, maxStrLen, config, type) {
     if (typeName === "Void") return "void";
-    if (!retval || retval.isNull()) return "null";
+    if (!retval) return "null";
+
+    const enumVal = formatEnumValue(type, retval);
+    if (enumVal) return enumVal;
 
     if (isByteArrayType(typeName)) {
       return utils.readByteArraySummary(retval, 20) || "Byte[]";
@@ -367,11 +433,15 @@
       return typeName;
     }
 
-    if (utils.isStringType(typeName)) return formatStringValue(retval, maxStrLen);
-    if (typeName === "Boolean") return retval.toInt32() !== 0 ? "true" : "false";
-    if (typeName === "Int32") return retval.toInt32().toString();
-    if (typeName === "UInt32") return retval.toUInt32().toString();
+    if (utils.isStringType(typeName)) {
+      return retval.isNull && retval.isNull() ? "null" : formatStringValue(retval, maxStrLen);
+    }
+    const baseName = normalizeTypeName(typeName);
+    if (isPrimitiveName(baseName)) {
+      return formatPrimitivePtr(retval, baseName);
+    }
 
+    if (retval.isNull && retval.isNull()) return "null";
     return previewObject(retval, getPreviewOptions(config));
   }
 

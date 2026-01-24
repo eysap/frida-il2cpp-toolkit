@@ -44,6 +44,10 @@
     return typeof val === "string" && /[A-Za-z0-9_.`&]+@0x[0-9a-fA-F]+/.test(val);
   }
 
+  function rawHasValue(raw) {
+    return typeof raw === "string" && /\(.+\)$/.test(raw);
+  }
+
   function stripPointer(val, ptrStr) {
     if (typeof val !== "string" || !ptrStr) return val;
     let cleaned = val.replace(`@${ptrStr}`, "");
@@ -55,6 +59,7 @@
     if (val === "null") return val;
     if (!raw || !val || !ptrStr) return val || raw;
     if (hasInlineType(val)) return val;
+    if (rawHasValue(raw)) return raw;
     const cleaned = stripPointer(val, ptrStr);
     return cleaned ? `${raw} ${cleaned}` : raw;
   }
@@ -305,18 +310,19 @@
                 let val;
                 if (config.logging.rawArgs && !isVerbose) {
                   // Raw mode (safe): just TypeName@pointer
-                  val = formatters.formatArgRaw(argPtr, p.type.name);
+                  val = formatters.formatArgRaw(argPtr, p.type.name, p.type);
                 } else {
                   // Full preview with object fields
                   val = formatters.formatArg(
                     argPtr,
                     p.type.name,
                     config.formatting.strings.maxLength,
-                    config
+                    config,
+                    p.type
                   );
                   // In verbose mode with rawArgs, merge raw pointer/type once
                   if (isVerbose && config.logging.rawArgs) {
-                    const raw = formatters.formatArgRaw(argPtr, p.type.name);
+                    const raw = formatters.formatArgRaw(argPtr, p.type.name, p.type);
                     const ptrStr = argPtr ? argPtr.toString() : null;
                     val = mergeVerboseRaw(raw, val, ptrStr);
                   }
@@ -399,7 +405,8 @@
                 retval,
                 method.returnType.name,
                 config.formatting.strings.maxLength,
-                config
+                config,
+                method.returnType
               );
               ui.hookReturn({
                 className: classFullName,
