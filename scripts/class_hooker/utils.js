@@ -2,50 +2,18 @@
 
 /**
  * Utility functions for IL2CPP type checking, string handling, and field reading
- *
- * String Utilities:
- * - Safe string conversion with truncation support
- * - IL2CPP String pointer → JavaScript string conversion
- * - Managed ToString() invocation with error handling
- *
- * Type Checking:
- * - Class type detection (Dictionary, List, Multimap) with caching
- * - String type identification from type names
- * - Memory-efficient class type cache to avoid repeated reflection
- *
- * Field Reading:
- * - Collection introspection (arrays, lists, dictionaries)
- * - Field value extraction by name matching predicates
- * - Numeric type conversions (Int32, Int64, Nullable<T>)
- * - Memory-safe reads with IL2CPP offset-based access
- *
  * @module utils
  */
 
 (function(global) {
   const { OFFSETS, LIMITS } = global.IL2CPPHooker;
 
-  // ============================================================================
   // String Utilities
-  // ============================================================================
 
-  /**
-   * Truncates a string to maximum length with ellipsis
-   * @param {string} s - String to truncate
-   * @param {number} maxLen - Maximum length
-   * @returns {string} Truncated string
-   */
   function truncate(s, maxLen) {
-    if (s.length <= maxLen) return s;
-    return s.slice(0, maxLen) + "...";
+    return s.length <= maxLen ? s : s.slice(0, maxLen) + "...";
   }
 
-  /**
-   * Safely converts IL2CPP String pointer to JavaScript string
-   * @param {NativePointer} ptr - IL2CPP String pointer
-   * @param {number} maxLen - Maximum string length
-   * @returns {string} Quoted string or pointer representation
-   */
   function safeString(ptr, maxLen) {
     if (!ptr || ptr.isNull()) return "null";
     try {
@@ -56,11 +24,6 @@
     }
   }
 
-  /**
-   * Safely gets object type from pointer
-   * @param {NativePointer} ptr - IL2CPP Object pointer
-   * @returns {string} Type@pointer representation
-   */
   function safeObjectType(ptr) {
     if (!ptr || ptr.isNull()) return "null";
     try {
@@ -71,11 +34,6 @@
     }
   }
 
-  /**
-   * Tries to read IL2CPP String from pointer
-   * @param {NativePointer} ptr - IL2CPP String pointer
-   * @returns {string|null} String content or null
-   */
   function tryReadString(ptr) {
     if (!ptr || ptr.isNull()) return null;
     try {
@@ -85,12 +43,6 @@
     }
   }
 
-  /**
-   * Tries to invoke ToString() on managed object
-   * @param {NativePointer} objPtr - IL2CPP Object pointer
-   * @param {number} maxLen - Maximum result length
-   * @returns {string|null} ToString result or null
-   */
   function tryObjectToString(objPtr, maxLen) {
     if (!objPtr || objPtr.isNull()) return null;
     try {
@@ -108,28 +60,14 @@
     }
   }
 
-  // ============================================================================
   // Type Checking
-  // ============================================================================
 
-  // Cache for class type checks to avoid repeated reflection
   const classTypeCache = new Map();
 
-  /**
-   * Checks if type name represents a String type
-   * @param {string} typeName - Type name to check
-   * @returns {boolean} True if String type
-   */
   function isStringType(typeName) {
     return /(^|\\.)String(&|$)/.test(typeName);
   }
 
-  /**
-   * Safely extracts class namespace and name for caching
-   * IL2CPP class metadata can be corrupted/inaccessible
-   * @param {Il2Cpp.Class} klass - IL2CPP class object
-   * @returns {{namespace: string, name: string}|null} Class info or null if inaccessible
-   */
   function safeClassInfo(klass) {
     if (!klass) return null;
     try {
@@ -142,11 +80,6 @@
     }
   }
 
-  /**
-   * Checks if class is Dictionary<TKey,TValue>
-   * @param {Il2Cpp.Class} klass - IL2CPP class object
-   * @returns {boolean} True if Dictionary class
-   */
   function isDictionaryClass(klass) {
     const info = safeClassInfo(klass);
     if (!info) return false;
@@ -154,18 +87,12 @@
     if (classTypeCache.has(cacheKey)) {
       return classTypeCache.get(cacheKey) === "dictionary";
     }
-    const result =
-      info.namespace === "System.Collections.Generic" &&
-      info.name.startsWith("Dictionary`2");
+    const result = info.namespace === "System.Collections.Generic" &&
+                   info.name.startsWith("Dictionary`2");
     classTypeCache.set(cacheKey, result ? "dictionary" : "other");
     return result;
   }
 
-  /**
-   * Checks if class is List<T>
-   * @param {Il2Cpp.Class} klass - IL2CPP class object
-   * @returns {boolean} True if List class
-   */
   function isListClass(klass) {
     const info = safeClassInfo(klass);
     if (!info) return false;
@@ -173,37 +100,26 @@
     if (classTypeCache.has(cacheKey)) {
       return classTypeCache.get(cacheKey) === "list";
     }
-    const result =
-      info.namespace === "System.Collections.Generic" &&
-      info.name.startsWith("List`1");
+    const result = info.namespace === "System.Collections.Generic" &&
+                   info.name.startsWith("List`1");
     classTypeCache.set(cacheKey, result ? "list" : "other");
     return result;
   }
 
-  /**
-   * Checks if class is Multimap<TKey,TValue>
-   * @param {Il2Cpp.Class} klass - IL2CPP class object
-   * @returns {boolean} True if Multimap class
-   */
   function isMultimapClass(klass) {
     const info = safeClassInfo(klass);
     if (!info) return false;
     return info.name.includes("Multimap`2");
   }
 
-  // ============================================================================
   // Field Reading
-  // ============================================================================
 
-  /**
-   * Reads byte array summary with smart truncation
-   * - Shows size and first N bytes preview
-   * - Detects empty buffers (all zeros)
-   * - Truncates large buffers to prevent crashes
-   * @param {NativePointer} arrayPtr - Byte array pointer
-   * @param {number} [maxPreviewBytes=20] - Max bytes to show in preview
-   * @returns {string|null} Array size description or null
-   */
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes.toString();
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
   function readByteArraySummary(arrayPtr, maxPreviewBytes) {
     if (!arrayPtr || arrayPtr.isNull()) return null;
     maxPreviewBytes = maxPreviewBytes || 20;
@@ -211,16 +127,13 @@
     try {
       const length = arrayPtr.add(OFFSETS.ARRAY_MAX_LENGTH).readPointer().toInt32();
       if (length < 0 || length > LIMITS.MAX_ARRAY_LENGTH) return null;
-
-      // Empty array
       if (length === 0) return "Byte[0]";
 
-      // For large arrays, just show size without preview to avoid crashes
-      if (length > 1024 * 1024) { // > 1MB
+      // Large arrays: size only
+      if (length > 1024 * 1024) {
         return `Byte[${formatSize(length)}]`;
       }
 
-      // Read first bytes for preview (data starts at offset 0x20 for IL2CPP arrays)
       const dataStart = arrayPtr.add(0x20);
       const previewLen = Math.min(length, maxPreviewBytes);
       const bytes = [];
@@ -232,9 +145,8 @@
         if (b !== 0) allZeros = false;
       }
 
-      // Check if remaining bytes are also zeros (sample check for large arrays)
+      // Sample check for empty buffers
       if (allZeros && length > previewLen) {
-        // Sample a few more positions to confirm it's likely all zeros
         const samplePositions = [
           Math.floor(length / 4),
           Math.floor(length / 2),
@@ -242,17 +154,13 @@
           length - 1
         ];
         for (const pos of samplePositions) {
-          if (pos < length) {
-            const b = dataStart.add(pos).readU8();
-            if (b !== 0) {
-              allZeros = false;
-              break;
-            }
+          if (pos < length && dataStart.add(pos).readU8() !== 0) {
+            allZeros = false;
+            break;
           }
         }
       }
 
-      // Format output
       if (allZeros) {
         return `Byte[${formatSize(length)}] [empty]`;
       }
@@ -265,22 +173,6 @@
     }
   }
 
-  /**
-   * Formats byte size in human-readable form
-   * @param {number} bytes - Size in bytes
-   * @returns {string} Formatted size (e.g., "1.5 MB", "256")
-   */
-  function formatSize(bytes) {
-    if (bytes < 1024) return bytes.toString();
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-  }
-
-  /**
-   * Reads List<T> element count
-   * @param {NativePointer} listPtr - List pointer
-   * @returns {number|null} List size or null
-   */
   function readListCount(listPtr) {
     if (!listPtr || listPtr.isNull()) return null;
     try {
@@ -290,12 +182,6 @@
     }
   }
 
-  /**
-   * Reads Dictionary<string,string> entries summary
-   * @param {NativePointer} dictPtr - Dictionary pointer
-   * @param {number} maxEntries - Maximum entries to read
-   * @returns {string|null} Dictionary summary or null
-   */
   function readDictionarySummary(dictPtr, maxEntries) {
     if (!dictPtr || dictPtr.isNull()) return null;
     try {
@@ -319,21 +205,12 @@
         pairs.push(`${keyStr}:${valStr}`);
       }
 
-      if (pairs.length > 0) {
-        return `Dict[${count}] {${pairs.join(", ")}}`;
-      }
-      return `Dict[${count}]`;
+      return pairs.length > 0 ? `Dict[${count}] {${pairs.join(", ")}}` : `Dict[${count}]`;
     } catch (_) {
       return null;
     }
   }
 
-  /**
-   * Reads Multimap summary by inspecting internal collection
-   * @param {NativePointer} mapPtr - Multimap pointer
-   * @param {Object} opts - Options for expansion
-   * @returns {string|null} Multimap summary or null
-   */
   function readMultimapSummary(mapPtr, opts) {
     if (!mapPtr || mapPtr.isNull()) return null;
     try {
@@ -357,20 +234,13 @@
     return null;
   }
 
-  /**
-   * Finds field value by name matching predicate
-   * @param {NativePointer} objPtr - Object pointer
-   * @param {Function} nameMatch - Name matching predicate
-   * @returns {Object|null} Field info {name, typeName, value} or null
-   */
   function findFieldValue(objPtr, nameMatch) {
     if (!objPtr || objPtr.isNull()) return null;
     try {
       const obj = new Il2Cpp.Object(objPtr);
       for (const field of obj.class.fields) {
         if (field.isStatic) continue;
-        const name = field.name || "";
-        if (!nameMatch(name)) continue;
+        if (!nameMatch(field.name || "")) continue;
         const value = obj.field(field.name).value;
         return { name: field.name, typeName: field.type.name, value };
       }
@@ -378,34 +248,20 @@
     return null;
   }
 
-  /**
-   * Finds string field by name matching predicate
-   * @param {NativePointer} objPtr - Object pointer
-   * @param {Function} nameMatch - Name matching predicate
-   * @returns {string|null} String value or null
-   */
   function findStringField(objPtr, nameMatch) {
     if (!objPtr || objPtr.isNull()) return null;
     try {
       const obj = new Il2Cpp.Object(objPtr);
       for (const field of obj.class.fields) {
         if (field.isStatic) continue;
-        const name = field.name || "";
-        if (!nameMatch(name)) continue;
-        const value = obj.field(field.name).value;
-        const str = tryReadString(value);
+        if (!nameMatch(field.name || "")) continue;
+        const str = tryReadString(obj.field(field.name).value);
         if (str !== null) return str;
       }
     } catch (_) {}
     return null;
   }
 
-  /**
-   * Finds integer field by name matching predicate
-   * @param {NativePointer} objPtr - Object pointer
-   * @param {Function} nameMatch - Name matching predicate
-   * @returns {number|null} Integer value or null
-   */
   function findIntField(objPtr, nameMatch) {
     const hit = findFieldValue(objPtr, nameMatch);
     if (!hit || !hit.value || hit.value.isNull()) return null;
@@ -416,11 +272,6 @@
     }
   }
 
-  /**
-   * Converts Int64 argument to string representation
-   * @param {NativePointer} argPtr - Int64 pointer
-   * @returns {string} String representation
-   */
   function readInt64Arg(argPtr) {
     if (!argPtr) return "null";
     try {
@@ -430,40 +281,29 @@
     }
   }
 
-  /**
-   * Reads Nullable<Int64> value
-   * @param {NativePointer} argPtr - Nullable<Int64> pointer
-   * @returns {string} Value or "null"
-   */
   function readNullableInt64Arg(argPtr) {
     if (!argPtr || argPtr.isNull()) return "null";
     try {
       const hasValue = argPtr.add(OFFSETS.NULLABLE_HAS_VALUE).readU8();
       if (!hasValue) return "null";
-      const value = argPtr.add(OFFSETS.NULLABLE_VALUE).readS64();
-      return value.toString();
+      return argPtr.add(OFFSETS.NULLABLE_VALUE).readS64().toString();
     } catch (_) {
       return argPtr.toString();
     }
   }
 
-  // Export to global scope
   global.IL2CPPHooker = global.IL2CPPHooker || {};
   global.IL2CPPHooker.utils = {
-    // String utilities
     truncate,
     safeString,
     safeObjectType,
     tryReadString,
     tryObjectToString,
-
-    // Type checking
     isStringType,
     isDictionaryClass,
     isListClass,
     isMultimapClass,
-
-    // Field reading
+    formatSize,
     readByteArraySummary,
     readListCount,
     readDictionarySummary,
@@ -473,8 +313,5 @@
     findIntField,
     readInt64Arg,
     readNullableInt64Arg,
-
-    // Formatting helpers
-    formatSize,
   };
 })(globalThis);

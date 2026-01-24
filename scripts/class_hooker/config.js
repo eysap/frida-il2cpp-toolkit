@@ -21,7 +21,7 @@
     target: {
       assembly: null, // Optional: "Core", "Assembly-CSharp"
       namespace: null, // Optional: "Com.Example.Network"
-      className: "gso", // Required: "ApiClient"
+      className: "jrp", // Required: "ApiClient"
       fullName: null, // Alternative: "Com.Example.Network.ApiClient"
       pickIndex: 0, // If multiple matches, select this index
       allowPartial: false, // Enable substring matching
