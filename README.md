@@ -211,6 +211,9 @@ formatting: {
     maxLength: 200,                   // Default string truncation
     httpMaxLength: 2048,              // For HTTP ToString() (includes headers)
   },
+  numbers: {
+    int64Format: "hex+dec",           // "hex" | "dec" | "hex+dec"
+  },
   objects: {
     tryToString: true,                // Invoke managed ToString() method
     showFields: true,                 // Display shallow field preview
@@ -276,6 +279,14 @@ ui: {
     enabled: true,                    // Collapse rapid repeated calls
     windowMs: 50,                     // Time window to consider calls repeated
     minRepeat: 2,                     // Minimum repeats before summary line
+    pattern: {
+      enabled: true,                  // Collapse repeated call sequences
+      maxLen: 4,                      // Max pattern length to detect
+      minRepeat: 2,                   // Minimum repeats before summary line
+      windowMs: 80,                   // Time window for pattern detection
+      includeArgs: false,             // Include args in pattern key
+      byInstance: true,               // Keep patterns per instance
+    },
   },
   colors: {
     enabled: true,

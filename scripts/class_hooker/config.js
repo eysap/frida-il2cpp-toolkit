@@ -54,6 +54,10 @@
         httpMaxLength: 2048, // For HTTP ToString() (includes headers)
       },
 
+      numbers: {
+        int64Format: "hex+dec", // "hex" | "dec" | "hex+dec"
+      },
+
       // Object representation
       objects: {
         tryToString: true, // Invoke managed ToString() method
@@ -116,6 +120,14 @@
         enabled: true, // Collapse rapid repeated calls
         windowMs: 50, // Time window to consider calls repeated
         minRepeat: 2, // Minimum repeats before summary line
+        pattern: {
+          enabled: true, // Collapse repeated call sequences
+          maxLen: 6, // Max pattern length to detect (increased for longer sequences)
+          minRepeat: 2, // Minimum repeats before summary line
+          windowMs: 100, // Time window for pattern detection (increased for longer patterns)
+          includeArgs: false, // Include args in pattern key
+          byInstance: true, // Keep patterns per instance
+        },
       },
 
       colors: {

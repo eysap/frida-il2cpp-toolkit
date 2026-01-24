@@ -32,6 +32,14 @@
   let lastCallStartAt = 0;
   let repeatCount = 0;
   let lastCallLabel = null;
+  let patternSeq = null;
+  let patternPos = 0;
+  let patternCount = 0;
+  let patternStartAt = 0;
+  let patternLastAt = 0;
+  let patternLabel = null;
+  let recentPatternKeys = [];
+  let recentPatternLabels = [];
 
   // Verbosity levels
   const VERBOSITY = {
@@ -56,6 +64,14 @@
     lastCallStartAt = 0;
     repeatCount = 0;
     lastCallLabel = null;
+    patternSeq = null;
+    patternPos = 0;
+    patternCount = 0;
+    patternStartAt = 0;
+    patternLastAt = 0;
+    patternLabel = null;
+    recentPatternKeys = [];
+    recentPatternLabels = [];
   }
 
   /**
@@ -232,6 +248,19 @@
     return `${opts.className}|${opts.methodName}|${opts.thisPtr || ''}|${argsKey}`;
   }
 
+  function buildPatternKey(opts) {
+    const patternCfg = config.collapse?.pattern || {};
+    const parts = [`${opts.className}.${opts.methodName}`];
+    if (patternCfg.byInstance !== false) parts.push(opts.thisPtr || '');
+    if (patternCfg.includeArgs) {
+      const argsKey = opts.args
+        ? opts.args.map(a => `${a.name}=${a.value}`).join('|')
+        : '';
+      parts.push(argsKey);
+    }
+    return parts.join('|');
+  }
+
   function flushRepeatSummary() {
     if (!config.collapse?.enabled) return;
     const minRepeat = config.collapse?.minRepeat ?? 2;
@@ -245,6 +274,109 @@
     repeatCount = 0;
   }
 
+  function resetRepeatState() {
+    lastCallKey = null;
+    lastCallAt = 0;
+    lastCallStartAt = 0;
+    repeatCount = 0;
+    lastCallLabel = null;
+  }
+
+  function flushPatternSummary() {
+    if (!config.collapse?.pattern?.enabled) return;
+    const minRepeat = config.collapse?.pattern?.minRepeat ?? 2;
+    if (patternCount < minRepeat || !patternLabel) {
+      patternCount = 0;
+      return;
+    }
+    const durationMs = patternLastAt && patternStartAt ? patternLastAt - patternStartAt : 0;
+    const duration = durationMs > 0 ? ` in ${durationMs}ms` : '';
+    console.log(`${timestamp()} ${c.muted('↻')} ${patternLabel} ${c.muted(`x${patternCount} repeats${duration}`)}`);
+    patternCount = 0;
+    resetRepeatState();
+  }
+
+  function handlePatternCollapse(opts, methodLabel) {
+    const patternCfg = config.collapse?.pattern;
+    if (!patternCfg?.enabled) return false;
+    const now = Date.now();
+    const windowMs = patternCfg.windowMs ?? config.collapse?.windowMs ?? 80;
+    const key = buildPatternKey(opts);
+
+    // Timeout: flush and reset if window expired
+    if (patternSeq && now - patternLastAt > windowMs) {
+      flushPatternSummary();
+      patternSeq = null;
+      patternPos = 0;
+      patternCount = 0;
+      patternLabel = null;
+    }
+
+    // Active pattern tracking
+    if (patternSeq) {
+      if (key === patternSeq[patternPos]) {
+        patternPos += 1;
+        patternLastAt = now;
+        if (patternPos >= patternSeq.length) {
+          patternPos = 0;
+          patternCount += 1;
+        }
+        return true;
+      }
+      // Pattern broken - flush and continue to detection
+      flushPatternSummary();
+      patternSeq = null;
+      patternPos = 0;
+      patternCount = 0;
+      patternLabel = null;
+    }
+
+    // Build history for pattern detection
+    recentPatternKeys.push(key);
+    recentPatternLabels.push(methodLabel);
+    const maxLen = patternCfg.maxLen ?? 4;
+    // Keep enough history for pattern detection (3x for better detection)
+    const maxKeep = maxLen * 3;
+    while (recentPatternKeys.length > maxKeep) {
+      recentPatternKeys.shift();
+      recentPatternLabels.shift();
+    }
+
+    // Detect patterns: look for repeated sequences (prefer longer patterns)
+    for (let len = maxLen; len >= 2; len--) {
+      if (recentPatternKeys.length < len * 2) continue;
+      const start = recentPatternKeys.length - len * 2;
+      let match = true;
+      for (let i = 0; i < len; i++) {
+        if (recentPatternKeys[start + i] !== recentPatternKeys[start + len + i]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        patternSeq = recentPatternKeys.slice(recentPatternKeys.length - len);
+        const distinct = new Set(patternSeq);
+        // Require at least 2 distinct calls to be a meaningful pattern
+        if (distinct.size < 2) {
+          patternSeq = null;
+          continue;
+        }
+        const labelSeq = recentPatternLabels.slice(recentPatternLabels.length - len);
+        patternLabel = labelSeq.join(` ${c.muted('→')} `);
+        patternPos = 0;
+        patternCount = 1; // We already matched twice to detect
+        patternStartAt = now;
+        patternLastAt = now;
+        resetRepeatState();
+        // Clear history to avoid re-detection
+        recentPatternKeys = [];
+        recentPatternLabels = [];
+        return false;
+      }
+    }
+
+    return false;
+  }
   function getInstanceId(ptr) {
     if (!ptr || !config.instanceIds?.enabled) return null;
     if (instanceIds.has(ptr)) return instanceIds.get(ptr);
@@ -258,7 +390,7 @@
     return c.type(id ? `${className}#${id}` : className);
   }
 
-  function formatThisValue(className, thisPtr) {
+  function formatThisValue(thisPtr) {
     if (!thisPtr) return null;
     const id = getInstanceId(thisPtr);
     if (id) {
@@ -280,6 +412,11 @@
     const v = getVerbosity();
     const ts = timestamp();
     const method = `${formatClassName(opts.className, opts.thisPtr)}.${c.method(opts.methodName)}`;
+
+    if (handlePatternCollapse(opts, method)) {
+      return;
+    }
+
     if (config.collapse?.enabled) {
       const now = Date.now();
       const key = buildCallKey(opts);
@@ -319,7 +456,7 @@
     }
 
     if (opts.showThis && opts.thisPtr) {
-      const thisVal = formatThisValue(opts.className, opts.thisPtr);
+      const thisVal = formatThisValue(opts.thisPtr);
       console.log(`  ${BOX.tree.last} ${c.key('this')}    : ${thisVal}`);
     }
   }

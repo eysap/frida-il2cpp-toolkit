@@ -47,16 +47,44 @@
     }
   }
 
-  function formatPrimitivePtr(ptr, baseName) {
+  function formatInt64Value(ptr, numbers, unsigned) {
+    const format = numbers?.int64Format || "hex+dec";
+    try {
+      const hex = ptr.toString();
+      let dec;
+      if (typeof BigInt !== "undefined") {
+        const u = BigInt(hex);
+        const max = BigInt("0x7fffffffffffffff");
+        const mod = BigInt("0x10000000000000000");
+        const s = u > max ? u - mod : u;
+        dec = (unsigned ? u : s).toString();
+      } else if (unsigned) {
+        const u64 = ptr.toUInt64 ? ptr.toUInt64() : uint64(ptr.toString());
+        dec = u64.toString(10);
+      } else {
+        const i64 = ptr.toInt64 ? ptr.toInt64() : int64(ptr.toString());
+        dec = i64.toString(10);
+      }
+      if (format === "hex") return hex;
+      if (format === "dec") return dec;
+      // Avoid redundancy if hex and dec look the same
+      if (hex === dec) return hex;
+      return `${hex}/${dec}`;
+    } catch (_) {
+      return ptr.toString();
+    }
+  }
+
+  function formatPrimitivePtr(ptr, baseName, numbers) {
     if (!ptr) return "null";
     try {
       switch (baseName) {
         case "Boolean":
           return ptr.toInt32() !== 0 ? "true" : "false";
         case "Int64":
-          return ptr.toInt64().toString();
+          return formatInt64Value(ptr, numbers, false);
         case "UInt64":
-          return ptr.toUInt64().toString();
+          return formatInt64Value(ptr, numbers, true);
         case "Int32":
         case "Int16":
         case "SByte":
@@ -74,25 +102,95 @@
     }
   }
 
-  function formatPrimitiveValue(value, baseName) {
+  function formatPrimitiveValue(value, baseName, numbers) {
     if (value === null || value === undefined) return "null";
     if (typeof value === "boolean") return value ? "true" : "false";
     if (typeof value === "number") return value.toString();
     if (typeof value === "string") return value;
+    if ((baseName === "Int64" || baseName === "UInt64") && value && typeof value.toString === "function") {
+      try {
+        return value.toString();
+      } catch (_) {}
+    }
     if (value && typeof value.toInt32 === "function") {
-      return formatPrimitivePtr(value, baseName);
+      return formatPrimitivePtr(value, baseName, numbers);
+    }
+    if (value && typeof value.toString === "function") {
+      try {
+        return value.toString();
+      } catch (_) {}
     }
     return safeValueToString(value, 50);
   }
 
-  function formatEnumValue(type, ptr) {
+  const enumCache = new Map();
+
+  function getEnumNameMap(enumClass) {
+    if (!enumClass) return null;
+    const key = enumClass.type?.name || enumClass.name;
+    if (enumCache.has(key)) return enumCache.get(key);
+    const map = new Map();
+    try {
+      enumClass.fields.forEach((field) => {
+        if (!field.isStatic || !field.isLiteral) return;
+        try {
+          const val = field.value;
+          // Store both numeric string and raw value as keys for lookup flexibility
+          if (val !== null && val !== undefined) {
+            const strVal = String(val);
+            map.set(strVal, field.name);
+            // Also store numeric conversion if different
+            if (typeof val === "number" || typeof val === "bigint") {
+              map.set(String(Number(val)), field.name);
+            }
+            // Handle Int64/UInt64 objects
+            if (val && typeof val.toInt32 === "function") {
+              try {
+                map.set(String(val.toInt32()), field.name);
+              } catch (_) {}
+            }
+          }
+        } catch (_) {}
+      });
+    } catch (_) {}
+    enumCache.set(key, map);
+    return map;
+  }
+
+  function formatEnumValue(type, ptr, numbers) {
     if (!type || !type.class || !type.class.isEnum) return null;
     const enumClass = type.class;
     const baseType = enumClass.baseType;
     const baseName = normalizeTypeName(baseType ? baseType.name : "");
-    const raw = formatPrimitivePtr(ptr, baseName || "Int32");
+    const raw = formatPrimitivePtr(ptr, baseName || "Int32", numbers);
     const fullName = enumClass.namespace ? `${enumClass.namespace}.${enumClass.name}` : enumClass.name;
-    return `${fullName}(${raw})`;
+    const map = getEnumNameMap(enumClass);
+
+    if (!map || map.size === 0) {
+      return `${fullName}(${raw})`;
+    }
+
+    // Try multiple lookup keys for robustness
+    let name = null;
+    try {
+      // Try decimal value first (most common)
+      const decVal = baseName === "Int64" || baseName === "UInt64"
+        ? formatPrimitivePtr(ptr, baseName, { int64Format: "dec" })
+        : (ptr.toInt32 ? String(ptr.toInt32()) : raw);
+      name = map.get(decVal);
+
+      // Try raw hex if decimal failed
+      if (!name && ptr.toInt32) {
+        name = map.get(String(ptr.toInt32()));
+      }
+
+      // Try unsigned conversion
+      if (!name && ptr.toUInt32) {
+        name = map.get(String(ptr.toUInt32()));
+      }
+    } catch (_) {}
+
+    return name ? `${fullName}.${name}(${raw})` : `${fullName}(${raw})`;
   }
 
   function getPreviewOptions(config) {
@@ -113,6 +211,7 @@
       omitFieldRegex: buildRegexList(config.formatting.objects.omitFieldPatterns),
       fieldAllowlistByType: config.formatting.objects.fieldAllowlistByType || {},
       fieldDenylistByType: config.formatting.objects.fieldDenylistByType || {},
+      numbers: config.formatting.numbers || {},
     };
     return cachedPreviewOptions;
   }
@@ -235,7 +334,7 @@
       return formatStringValue(valuePtr, opts.maxStringLength);
     }
     if (isPrimitiveName(baseName)) {
-      return formatPrimitiveValue(value, baseName);
+      return formatPrimitiveValue(value, baseName, opts.numbers);
     }
 
     try {
@@ -370,7 +469,7 @@
       return argPtr.isNull && argPtr.isNull() ? "null" : formatByRefValue(argPtr, typeName);
     }
 
-    const enumVal = formatEnumValue(type, argPtr);
+    const enumVal = formatEnumValue(type, argPtr, config.formatting.numbers);
     if (enumVal) return enumVal;
 
     if (isByteArrayType(typeName)) {
@@ -393,20 +492,22 @@
 
     const baseName = normalizeTypeName(typeName);
     if (isPrimitiveName(baseName)) {
-      return formatPrimitivePtr(argPtr, baseName);
+      return formatPrimitivePtr(argPtr, baseName, config.formatting.numbers);
     }
 
     if (argPtr.isNull && argPtr.isNull()) return "null";
     return previewObject(argPtr, getPreviewOptions(config));
   }
 
-  function formatArgRaw(argPtr, typeName, type) {
+  function formatArgRaw(argPtr, typeName, type, numbers) {
     if (!argPtr) return "null";
-    const enumVal = formatEnumValue(type, argPtr);
+    const enumVal = formatEnumValue(type, argPtr, numbers);
     if (enumVal) return enumVal;
     const baseName = normalizeTypeName(typeName);
     if (isPrimitiveName(baseName)) {
-      return `${typeName}(${formatPrimitivePtr(argPtr, baseName)})`;
+      const val = formatPrimitivePtr(argPtr, baseName, numbers);
+      // For Int64/UInt64 with hex+dec, show full type prefix
+      return `System.${baseName}(${val})`;
     }
     if (argPtr.isNull && argPtr.isNull()) return "null";
     return `${typeName}@${argPtr}`;
@@ -416,7 +517,7 @@
     if (typeName === "Void") return "void";
     if (!retval) return "null";
 
-    const enumVal = formatEnumValue(type, retval);
+    const enumVal = formatEnumValue(type, retval, config.formatting.numbers);
     if (enumVal) return enumVal;
 
     if (isByteArrayType(typeName)) {
@@ -438,7 +539,7 @@
     }
     const baseName = normalizeTypeName(typeName);
     if (isPrimitiveName(baseName)) {
-      return formatPrimitivePtr(retval, baseName);
+      return formatPrimitivePtr(retval, baseName, config.formatting.numbers);
     }
 
     if (retval.isNull && retval.isNull()) return "null";

@@ -57,11 +57,41 @@
 
   function mergeVerboseRaw(raw, val, ptrStr) {
     if (val === "null") return val;
-    if (!raw || !val || !ptrStr) return val || raw;
+    if (!raw || !val) return val || raw;
+
+    // If raw already contains full info (enum, primitive with value), use it
+    if (rawHasValue(raw)) {
+      // Check if val has additional context (like hex+dec format)
+      if (typeof val === "string" && typeof raw === "string") {
+        if (val.includes("/") && !raw.includes("/")) {
+          const valPayload = (val.match(/\(([^)]+)\)/) || [])[1] || val;
+          return raw.replace(/\([^)]+\)$/, `(${valPayload})`);
+        }
+      }
+      return raw;
+    }
+
+    // If val already has type@ptr format, use it directly
     if (hasInlineType(val)) return val;
-    if (rawHasValue(raw)) return raw;
+
+    // For simple Type@ptr raw, append value preview if different
+    if (!ptrStr) return val || raw;
     const cleaned = stripPointer(val, ptrStr);
-    return cleaned ? `${raw} ${cleaned}` : raw;
+    if (!cleaned || cleaned === raw) return raw;
+
+    // Avoid duplicating type info already in raw
+    if (raw.includes(cleaned)) return raw;
+    return `${raw} ${cleaned}`;
+  }
+
+  function safeVirtualAddress(method) {
+    try {
+      const addr = method.virtualAddress;
+      if (!addr || addr.isNull()) return null;
+      return addr;
+    } catch (_) {
+      return null;
+    }
   }
 
   /**
@@ -180,9 +210,8 @@
         .map((p) => `${p.type.name} ${p.name}`)
         .join(", ");
       const sig = `${m.isStatic ? "static " : ""}${m.returnType.name} ${m.name}(${params})`;
-      const addr = m.virtualAddress && !m.virtualAddress.isNull()
-        ? m.virtualAddress.toString()
-        : null;
+      const addrPtr = safeVirtualAddress(m);
+      const addr = addrPtr ? addrPtr.toString() : null;
       ui.methodListItem(i, sig, addr);
     });
 
@@ -203,7 +232,9 @@
           if (!re.test(m.name)) return false;
         } catch (_) {}
       }
-      if (!m.virtualAddress || m.virtualAddress.isNull()) return false;
+      const addr = safeVirtualAddress(m);
+      if (!addr) return false;
+      m.__hookAddress = addr;
       return true;
     });
   }
@@ -263,7 +294,7 @@
   /**
    * Installs Frida interceptors on specified methods with rate limiting
    */
-  function hookMethods(klass, classFullName, methods, config) {
+  function hookMethods(_klass, classFullName, methods, config) {
     const ui = getUI();
 
     if (!config.performance.enabled) {
@@ -291,7 +322,12 @@
       const sig = `${method.isStatic ? "static " : ""}${method.returnType.name} ${method.name}(${sigParams})`;
 
       try {
-        Interceptor.attach(method.virtualAddress, {
+        const addr = method.__hookAddress || safeVirtualAddress(method);
+        if (!addr) {
+          failed++;
+          return;
+        }
+        Interceptor.attach(addr, {
           onEnter: function(args) {
             const argStart = method.isStatic ? 0 : 1;
             const isNewRequest = config.analysis.http.enabled && method.name === "NewRequest";
@@ -310,7 +346,7 @@
                 let val;
                 if (config.logging.rawArgs && !isVerbose) {
                   // Raw mode (safe): just TypeName@pointer
-                  val = formatters.formatArgRaw(argPtr, p.type.name, p.type);
+                  val = formatters.formatArgRaw(argPtr, p.type.name, p.type, config.formatting.numbers);
                 } else {
                   // Full preview with object fields
                   val = formatters.formatArg(
@@ -322,7 +358,7 @@
                   );
                   // In verbose mode with rawArgs, merge raw pointer/type once
                   if (isVerbose && config.logging.rawArgs) {
-                    const raw = formatters.formatArgRaw(argPtr, p.type.name, p.type);
+                    const raw = formatters.formatArgRaw(argPtr, p.type.name, p.type, config.formatting.numbers);
                     const ptrStr = argPtr ? argPtr.toString() : null;
                     val = mergeVerboseRaw(raw, val, ptrStr);
                   }
