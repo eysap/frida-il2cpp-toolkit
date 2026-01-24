@@ -70,6 +70,7 @@ const CONFIG = {
   filters: {
     methodNameContains: null,           // Filter by substring
     methodRegex: null,                  // OR filter by regex: "^Send|^Receive"
+    exclude: [],                        // Methods to skip
   },
   performance: {
     enabled: true,                      // Master on/off switch
@@ -178,6 +179,7 @@ target: {
 filters: {
   methodNameContains: "Request",      // Only hook methods containing this
   methodRegex: "^Send|^Receive",      // OR: regex pattern for method names
+  exclude: ["bizv", "bixf"],          // Methods to skip
 }
 ```
 

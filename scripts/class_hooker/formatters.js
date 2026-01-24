@@ -109,7 +109,7 @@
     if (typeof value === "string") return value;
     if ((baseName === "Int64" || baseName === "UInt64") && value && typeof value.toString === "function") {
       try {
-        return value.toString();
+        return formatInt64Value(value, numbers, baseName === "UInt64");
       } catch (_) {}
     }
     if (value && typeof value.toInt32 === "function") {
@@ -238,6 +238,61 @@
     return typeof typeName === "string" && typeName.endsWith("&");
   }
 
+  function isPtrLike(value) {
+    if (!value) return false;
+    return typeof value.add === "function" ||
+      typeof value.toInt32 === "function" ||
+      typeof value.isNull === "function";
+  }
+
+  function readManagedArrayLength(ptr, maxLen) {
+    if (!ptr || typeof ptr.add !== "function") return null;
+    try {
+      const len = ptr.add(0x18).readPointer().toInt32();
+      const limit = maxLen || 10000000;
+      if (len >= 0 && len < limit) return len;
+    } catch (_) {}
+    return null;
+  }
+
+  function formatArraySummary(value, typeName, maxLen) {
+    const base = typeName.replace("[]", "");
+    if (Array.isArray(value)) {
+      return `${base}[${value.length}]`;
+    }
+    const len = readManagedArrayLength(value, maxLen);
+    if (len !== null) {
+      return `${base}[${len}]`;
+    }
+    return typeName;
+  }
+
+  function getCollectionSummary(obj, ptr, opts) {
+    if (!obj || !obj.class || !opts) return null;
+    const klass = obj.class;
+    if (opts.expandDictionaries && utils.isDictionaryClass(klass)) {
+      return utils.readDictionarySummary(ptr, opts.maxDictEntries) || `${klass.name}@${ptr}`;
+    }
+    if (opts.expandMultimap && utils.isMultimapClass(klass)) {
+      return utils.readMultimapSummary(ptr, opts) || `${klass.name}@${ptr}`;
+    }
+    if (opts.expandLists && utils.isListClass(klass)) {
+      const count = utils.readListCount(ptr);
+      return count !== null ? `List[${count}]` : `${klass.name}@${ptr}`;
+    }
+    return null;
+  }
+
+  function tryGetCollectionSummary(ptr, opts) {
+    if (!ptr || !opts) return null;
+    try {
+      const obj = new Il2Cpp.Object(ptr);
+      return getCollectionSummary(obj, ptr, opts);
+    } catch (_) {
+      return null;
+    }
+  }
+
   function formatStringValue(ptr, maxLen) {
     if (!ptr || ptr.isNull()) return "null";
     const raw = utils.tryReadString(ptr);
@@ -287,71 +342,97 @@
     return str.length > maxLen ? str.slice(0, maxLen) + "..." : str;
   }
 
-  function summarizeFieldValue(value, typeName, opts) {
-    if (value === null || value === undefined) return "null";
-    if (typeof value.isNull === "function" && value.isNull()) return "null";
+  function formatByteArrayValue(value, opts) {
+    const bufferMax = opts?.maxBufferPreviewBytes || 20;
+    if (value && typeof value.add === "function") {
+      return utils.readByteArraySummary(value, bufferMax) || "Byte[]";
+    }
+    if (Array.isArray(value)) {
+      const len = value.length;
+      if (len === 0) return "Byte[0]";
+      const sample = value.slice(0, Math.min(100, len));
+      if (sample.every(b => b === 0) && len > 100) {
+        return `Byte[${utils.formatSize(len)}] [empty]`;
+      }
+      const preview = value.slice(0, 20).join(",");
+      return len > 20
+        ? `Byte[${utils.formatSize(len)}] [${preview}...+${utils.formatSize(len - 20)}]`
+        : `Byte[${len}] [${preview}]`;
+    }
+    return "Byte[?]";
+  }
 
-    // Handle byte arrays first to avoid huge output
-    if (isByteArrayType(typeName)) {
-      if (typeof value.add === "function") {
-        return utils.readByteArraySummary(value, opts.maxBufferPreviewBytes || 20) || "Byte[]";
-      }
-      if (Array.isArray(value)) {
-        const len = value.length;
-        if (len === 0) return "Byte[0]";
-        const sample = value.slice(0, Math.min(100, len));
-        if (sample.every(b => b === 0) && len > 100) {
-          return `Byte[${utils.formatSize(len)}] [empty]`;
-        }
-        const preview = value.slice(0, 20).join(",");
-        return len > 20
-          ? `Byte[${utils.formatSize(len)}] [${preview}...+${utils.formatSize(len - 20)}]`
-          : `Byte[${len}] [${preview}]`;
-      }
-      return `Byte[?]`;
+  function formatValue(params) {
+    const {
+      value,
+      typeName,
+      type,
+      config,
+      opts,
+      maxStrLen,
+      context,
+    } = params || {};
+
+    if (value === null || value === undefined) return "null";
+    const ctx = context || "arg";
+    const numbers = config?.formatting?.numbers || opts?.numbers || {};
+    const maxStringLength = maxStrLen !== undefined ? maxStrLen : opts?.maxStringLength;
+    const ptrLike = isPtrLike(value);
+
+    if (ctx === "arg" && isByRefType(typeName)) {
+      return formatByRefValue(value, typeName);
     }
 
-    // Handle other array types
+    if (ptrLike && value.isNull && value.isNull()) return "null";
+
+    if (ptrLike) {
+      const enumVal = formatEnumValue(type, value, numbers);
+      if (enumVal) return enumVal;
+    }
+
+    if (isByteArrayType(typeName)) {
+      return formatByteArrayValue(value, opts);
+    }
+
     if (isArrayType(typeName)) {
-      if (Array.isArray(value)) {
-        return `${typeName.replace("[]", "")}[${value.length}]`;
-      }
-      if (typeof value.add === "function") {
-        try {
-          const len = value.add(0x18).readPointer().toInt32();
-          if (len >= 0 && len < 1000000) {
-            return `${typeName.replace("[]", "")}[${len}]`;
-          }
-        } catch (_) {}
-      }
-      return typeName;
+      const arrayLimit = ctx === "field" ? 1000000 : 10000000;
+      return formatArraySummary(value, typeName, arrayLimit);
+    }
+
+    if (utils.isStringType(typeName)) {
+      if (ptrLike) return formatStringValue(value, maxStringLength);
+      if (typeof value === "string") return value;
     }
 
     const baseName = normalizeTypeName(typeName);
-    const valuePtr = value;
-
-    if (utils.isStringType(typeName)) {
-      return formatStringValue(valuePtr, opts.maxStringLength);
-    }
     if (isPrimitiveName(baseName)) {
-      return formatPrimitiveValue(value, baseName, opts.numbers);
+      if (ptrLike && typeof value.toInt32 === "function") {
+        return formatPrimitivePtr(value, baseName, numbers);
+      }
+      return formatPrimitiveValue(value, baseName, numbers);
     }
 
-    try {
-      const obj = new Il2Cpp.Object(valuePtr);
-      if (opts.expandDictionaries && utils.isDictionaryClass(obj.class)) {
-        return utils.readDictionarySummary(valuePtr, opts.maxDictEntries) || "Dict";
-      }
-      if (opts.expandMultimap && utils.isMultimapClass(obj.class)) {
-        return utils.readMultimapSummary(valuePtr, opts) || "Multimap";
-      }
-      if (opts.expandLists && utils.isListClass(obj.class)) {
-        const count = utils.readListCount(valuePtr);
-        return count !== null ? `List[${count}]` : "List";
-      }
-    } catch (_) {}
+    if (!ptrLike) {
+      return safeValueToString(value, 100);
+    }
 
-    return safeValueToString(value, 100);
+    if (ctx === "field") {
+      const summary = tryGetCollectionSummary(value, opts);
+      if (summary) return summary;
+      return safeValueToString(value, 100);
+    }
+
+    return previewObject(value, getPreviewOptions(config));
+  }
+
+  function summarizeFieldValue(value, typeName, opts) {
+    const options = opts || {};
+    return formatValue({
+      value,
+      typeName,
+      opts: options,
+      context: "field",
+    });
   }
 
   function safeObjectClassInfo(obj) {
@@ -366,6 +447,56 @@
     } catch (_) {
       return null;
     }
+  }
+
+  function collectObjectFields(obj, classInfo, opts, options) {
+    const fields = [];
+    let truncated = false;
+    let printed = 0;
+    const maxFields = options?.maxFields ?? 0;
+    const includeStatic = options?.includeStatic ?? false;
+    const applyFilters = options?.applyFilters ?? false;
+
+    for (const field of obj.class.fields) {
+      if (!includeStatic && field.isStatic) continue;
+      if (printed >= maxFields) {
+        truncated = true;
+        break;
+      }
+      if (applyFilters && !shouldIncludeField(classInfo, field.name, opts)) continue;
+
+      const typeName = field.type.name || "";
+
+      if (isByteArrayType(typeName) && isBufferFieldName(field.name)) {
+        fields.push({ name: field.name, value: "[buffer]" });
+        printed++;
+        continue;
+      }
+
+      if (isArrayType(typeName)) {
+        try {
+          const arrayPtr = obj.field(field.name).value;
+          if (arrayPtr && !(arrayPtr.isNull && arrayPtr.isNull())) {
+            fields.push({ name: field.name, value: formatArraySummary(arrayPtr, typeName, 10000000) });
+          } else {
+            fields.push({ name: field.name, value: "null" });
+          }
+        } catch (_) {
+          fields.push({ name: field.name, value: typeName });
+        }
+        printed++;
+        continue;
+      }
+
+      try {
+        const value = obj.field(field.name).value;
+        const summary = summarizeFieldValue(value, typeName, opts);
+        fields.push({ name: field.name, value: summary });
+        printed++;
+      } catch (_) {}
+    }
+
+    return { fields, truncated };
   }
 
   function previewObject(ptr, opts) {
@@ -389,17 +520,8 @@
     }
 
     // Handle collection types
-    const klass = classInfo.klass;
-    if (opts.expandDictionaries && utils.isDictionaryClass(klass)) {
-      return utils.readDictionarySummary(ptr, opts.maxDictEntries) || `${classInfo.name}@${ptr}`;
-    }
-    if (opts.expandMultimap && utils.isMultimapClass(klass)) {
-      return utils.readMultimapSummary(ptr, opts) || `${classInfo.name}@${ptr}`;
-    }
-    if (opts.expandLists && utils.isListClass(klass)) {
-      const count = utils.readListCount(ptr);
-      return count !== null ? `List[${count}]` : `${classInfo.name}@${ptr}`;
-    }
+    const collectionSummary = getCollectionSummary(obj, ptr, opts);
+    if (collectionSummary) return collectionSummary;
 
     let toStringValue = null;
     if (opts.tryToString) {
@@ -413,50 +535,19 @@
     }
 
     // Build field preview
-    const fields = [];
+    let fields = [];
     try {
-      for (const field of obj.class.fields) {
-        if (field.isStatic) continue;
-        if (fields.length >= opts.maxObjectFields) break;
-        if (!shouldIncludeField(classInfo, field.name, opts)) continue;
-
-        const typeName = field.type.name || "";
-
-        // Buffer fields: show placeholder
-        if (isByteArrayType(typeName) && isBufferFieldName(field.name)) {
-          fields.push(`${field.name}=[buffer]`);
-          continue;
-        }
-
-        // Array fields: show size only
-        if (isArrayType(typeName)) {
-          try {
-            const arrayPtr = obj.field(field.name).value;
-            if (arrayPtr && typeof arrayPtr.add === "function" && !arrayPtr.isNull()) {
-              const len = arrayPtr.add(0x18).readPointer().toInt32();
-              if (len >= 0 && len < 10000000) {
-                fields.push(`${field.name}=${typeName.replace("[]", "")}[${len}]`);
-              } else {
-                fields.push(`${field.name}=${typeName}`);
-              }
-            } else {
-              fields.push(`${field.name}=null`);
-            }
-          } catch (_) {
-            fields.push(`${field.name}=${typeName}`);
-          }
-          continue;
-        }
-
-        try {
-          const value = obj.field(field.name).value;
-          const summary = summarizeFieldValue(value, typeName, opts);
-          fields.push(`${field.name}=${summary}`);
-        } catch (_) {}
-      }
+      const result = collectObjectFields(obj, classInfo, opts, {
+        maxFields: opts.maxObjectFields,
+        includeStatic: false,
+        applyFilters: true,
+      });
+      fields = result.fields;
     } catch (_) {}
 
-    const preview = fields.length > 0 ? ` {${fields.join(", ")}}` : "";
+    const preview = fields.length > 0
+      ? ` {${fields.map((f) => `${f.name}=${f.value}`).join(", ")}}`
+      : "";
     return toStringValue
       ? `${classInfo.fullName}@${ptr} "${toStringValue}"${preview}`
       : `${classInfo.fullName}@${ptr}${preview}`;
@@ -464,39 +555,14 @@
 
   function formatArg(argPtr, typeName, maxStrLen, config, type) {
     if (!argPtr) return "null";
-
-    if (isByRefType(typeName)) {
-      return argPtr.isNull && argPtr.isNull() ? "null" : formatByRefValue(argPtr, typeName);
-    }
-
-    const enumVal = formatEnumValue(type, argPtr, config.formatting.numbers);
-    if (enumVal) return enumVal;
-
-    if (isByteArrayType(typeName)) {
-      return utils.readByteArraySummary(argPtr, 20) || "Byte[]";
-    }
-
-    if (isArrayType(typeName)) {
-      try {
-        const len = argPtr.add(0x18).readPointer().toInt32();
-        if (len >= 0 && len < 10000000) {
-          return `${typeName.replace("[]", "")}[${len}]`;
-        }
-      } catch (_) {}
-      return typeName;
-    }
-
-    if (utils.isStringType(typeName)) {
-      return argPtr.isNull && argPtr.isNull() ? "null" : formatStringValue(argPtr, maxStrLen);
-    }
-
-    const baseName = normalizeTypeName(typeName);
-    if (isPrimitiveName(baseName)) {
-      return formatPrimitivePtr(argPtr, baseName, config.formatting.numbers);
-    }
-
-    if (argPtr.isNull && argPtr.isNull()) return "null";
-    return previewObject(argPtr, getPreviewOptions(config));
+    return formatValue({
+      value: argPtr,
+      typeName,
+      type,
+      maxStrLen,
+      config,
+      context: "arg",
+    });
   }
 
   function formatArgRaw(argPtr, typeName, type, numbers) {
@@ -506,7 +572,6 @@
     const baseName = normalizeTypeName(typeName);
     if (isPrimitiveName(baseName)) {
       const val = formatPrimitivePtr(argPtr, baseName, numbers);
-      // For Int64/UInt64 with hex+dec, show full type prefix
       return `System.${baseName}(${val})`;
     }
     if (argPtr.isNull && argPtr.isNull()) return "null";
@@ -516,34 +581,14 @@
   function formatReturn(retval, typeName, maxStrLen, config, type) {
     if (typeName === "Void") return "void";
     if (!retval) return "null";
-
-    const enumVal = formatEnumValue(type, retval, config.formatting.numbers);
-    if (enumVal) return enumVal;
-
-    if (isByteArrayType(typeName)) {
-      return utils.readByteArraySummary(retval, 20) || "Byte[]";
-    }
-
-    if (isArrayType(typeName)) {
-      try {
-        const len = retval.add(0x18).readPointer().toInt32();
-        if (len >= 0 && len < 10000000) {
-          return `${typeName.replace("[]", "")}[${len}]`;
-        }
-      } catch (_) {}
-      return typeName;
-    }
-
-    if (utils.isStringType(typeName)) {
-      return retval.isNull && retval.isNull() ? "null" : formatStringValue(retval, maxStrLen);
-    }
-    const baseName = normalizeTypeName(typeName);
-    if (isPrimitiveName(baseName)) {
-      return formatPrimitivePtr(retval, baseName, config.formatting.numbers);
-    }
-
-    if (retval.isNull && retval.isNull()) return "null";
-    return previewObject(retval, getPreviewOptions(config));
+    return formatValue({
+      value: retval,
+      typeName,
+      type,
+      maxStrLen,
+      config,
+      context: "return",
+    });
   }
 
   // Object Dumping
@@ -588,55 +633,19 @@
       : obj.class.name;
 
     const ui = global.IL2CPPHooker.ui;
-    const fields = [];
+    let fields = [];
     let truncated = false;
-    let printed = 0;
 
     try {
-      for (const field of obj.class.fields) {
-        if (!opts.includeStatic && field.isStatic) continue;
-        if (printed >= opts.maxFields) {
-          truncated = true;
-          break;
-        }
-
-        const fieldTypeName = field.type.name || "";
-
-        if (isByteArrayType(fieldTypeName) && isBufferFieldName(field.name)) {
-          fields.push({ name: field.name, value: "[buffer]" });
-          printed++;
-          continue;
-        }
-
-        if (isArrayType(fieldTypeName)) {
-          try {
-            const arrayPtr = obj.field(field.name).value;
-            if (arrayPtr && typeof arrayPtr.add === "function" && !arrayPtr.isNull()) {
-              const len = arrayPtr.add(0x18).readPointer().toInt32();
-              if (len >= 0 && len < 10000000) {
-                fields.push({ name: field.name, value: `${fieldTypeName.replace("[]", "")}[${len}]` });
-              } else {
-                fields.push({ name: field.name, value: fieldTypeName });
-              }
-            } else {
-              fields.push({ name: field.name, value: "null" });
-            }
-          } catch (_) {
-            fields.push({ name: field.name, value: fieldTypeName });
-          }
-          printed++;
-          continue;
-        }
-
-        try {
-          const value = obj.field(field.name).value;
-          const summary = summarizeFieldValue(value, fieldTypeName, opts);
-          fields.push({ name: field.name, value: summary });
-          printed++;
-        } catch (_) {}
-      }
+      const result = collectObjectFields(obj, null, opts, {
+        maxFields: opts.maxFields,
+        includeStatic: opts.includeStatic,
+        applyFilters: false,
+      });
+      fields = result.fields;
+      truncated = result.truncated;
     } catch (e) {
-      fields.push({ name: 'ERROR', value: `Cannot read fields: ${e.message}` });
+      fields.push({ name: "ERROR", value: `Cannot read fields: ${e.message}` });
     }
 
     ui.dumpBlock({

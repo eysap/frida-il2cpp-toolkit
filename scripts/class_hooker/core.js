@@ -222,7 +222,26 @@
    * Builds list of methods to hook based on filters
    */
   function buildHookList(klass, filters) {
+    const exclude = Array.isArray(filters.exclude) ? filters.exclude : [];
+    const excludeSet = new Set(
+      exclude
+        .filter((val) => typeof val === "string")
+        .map((val) => {
+          let name = val.trim();
+          if (!name) return null;
+          if (name.startsWith(".")) name = name.slice(1);
+          const paren = name.indexOf("(");
+          if (paren !== -1) name = name.slice(0, paren);
+          if (name.includes(".")) name = name.split(".").pop();
+          return name.trim();
+        })
+        .filter(Boolean)
+    );
+
     return klass.methods.filter((m) => {
+      if (excludeSet.size > 0 && excludeSet.has(m.name)) {
+        return false;
+      }
       if (filters.methodNameContains && !m.name.includes(filters.methodNameContains)) {
         return false;
       }
@@ -367,7 +386,14 @@
               }
             }
 
-            const needsThisPtr = !method.isStatic && (config.logging.showThis || config.ui?.instanceIds?.enabled);
+            const collapseCfg = config.ui?.collapse;
+            const collapseByInstance = collapseCfg?.pattern?.enabled && collapseCfg?.pattern?.byInstance !== false;
+            const needsThisPtr = !method.isStatic && (
+              config.logging.showThis ||
+              config.ui?.instanceIds?.enabled ||
+              collapseCfg?.enabled ||
+              collapseByInstance
+            );
             const thisPtr = needsThisPtr ? args[0].toString() : null;
 
             // Store context for onLeave

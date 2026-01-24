@@ -21,7 +21,7 @@
     target: {
       assembly: null, // Optional: "Core", "Assembly-CSharp"
       namespace: null, // Optional: "Com.Example.Network"
-      className: "FightState", // Required: "ApiClient"
+      className: null, // Required: "ApiClient"
       fullName: null, // Alternative: "Com.Example.Network.ApiClient"
       pickIndex: 0, // If multiple matches, select this index
       allowPartial: false, // Enable substring matching
@@ -30,6 +30,7 @@
     filters: {
       methodNameContains: null, // Substring filter: "Request"
       methodRegex: null, // Regex filter: "^get_|^set_"
+      exclude: [], // Method names to exclude
     },
 
     performance: {
@@ -161,7 +162,35 @@
     },
   };
 
+  function mergeDefaults(target, defaults) {
+    if (!target || typeof target !== "object") return;
+    Object.keys(defaults).forEach((key) => {
+      const defVal = defaults[key];
+      const curVal = target[key];
+      if (curVal === undefined) {
+        target[key] = Array.isArray(defVal) ? defVal.slice() : defVal;
+        return;
+      }
+      if (defVal && typeof defVal === "object" && !Array.isArray(defVal)) {
+        mergeDefaults(curVal, defVal);
+      }
+    });
+  }
+
+  function normalizeConfig(cfg) {
+    if (!cfg || typeof cfg !== "object") return CONFIG;
+    if (cfg.__normalized) return cfg;
+    if (cfg === CONFIG) {
+      cfg.__normalized = true;
+      return cfg;
+    }
+    mergeDefaults(cfg, CONFIG);
+    cfg.__normalized = true;
+    return cfg;
+  }
+
   // Export to global scope
   global.IL2CPPHooker = global.IL2CPPHooker || {};
   global.IL2CPPHooker.CONFIG = CONFIG;
+  global.IL2CPPHooker.normalizeConfig = normalizeConfig;
 })(globalThis);

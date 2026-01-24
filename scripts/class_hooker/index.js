@@ -14,14 +14,6 @@
  * - HTTP request/response analysis support
  * - Modern UI output with colors, box-drawing, and structured formatting
  *
- * Usage:
- *   1. Configure target in config.js (className or fullName required)
- *   2. Optional: Set filters for method selection
- *   3. Load all module files in order:
- *      frida -l constants.js -l config.js -l utils.js -l formatters.js \
- *            -l http-analysis.js -l ui/colors.js -l ui/box.js -l ui/index.js \
- *            -l core.js -l index.js -p <pid>
- *
  * @module index
  */
 
@@ -49,7 +41,9 @@
     return;
   }
 
-  const CONFIG = hooker.CONFIG;
+  const CONFIG = hooker.normalizeConfig
+    ? hooker.normalizeConfig(hooker.CONFIG)
+    : hooker.CONFIG;
   const core = hooker.core;
   const ui = hooker.ui;
 
