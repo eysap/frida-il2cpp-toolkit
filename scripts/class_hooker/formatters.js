@@ -195,12 +195,14 @@
   }
 
   function safeObjectClassInfo(obj) {
-    if (!obj || !obj.class) return null;
+    if (!obj) return null;
     try {
-      const ns = obj.class.namespace;
-      const name = obj.class.name;
+      const klass = obj.class;
+      if (!klass) return null;
+      const ns = klass.namespace;
+      const name = klass.name;
       if (typeof ns !== "string" || typeof name !== "string") return null;
-      return { namespace: ns, name: name, fullName: ns ? `${ns}.${name}` : name };
+      return { namespace: ns, name: name, fullName: ns ? `${ns}.${name}` : name, klass };
     } catch (_) {
       return null;
     }
@@ -227,13 +229,14 @@
     }
 
     // Handle collection types
-    if (opts.expandDictionaries && utils.isDictionaryClass(obj.class)) {
+    const klass = classInfo.klass;
+    if (opts.expandDictionaries && utils.isDictionaryClass(klass)) {
       return utils.readDictionarySummary(ptr, opts.maxDictEntries) || `${classInfo.name}@${ptr}`;
     }
-    if (opts.expandMultimap && utils.isMultimapClass(obj.class)) {
+    if (opts.expandMultimap && utils.isMultimapClass(klass)) {
       return utils.readMultimapSummary(ptr, opts) || `${classInfo.name}@${ptr}`;
     }
-    if (opts.expandLists && utils.isListClass(obj.class)) {
+    if (opts.expandLists && utils.isListClass(klass)) {
       const count = utils.readListCount(ptr);
       return count !== null ? `List[${count}]` : `${classInfo.name}@${ptr}`;
     }
