@@ -325,9 +325,8 @@
               }
             }
 
-            const thisPtr = !method.isStatic && config.logging.showThis
-              ? args[0].toString()
-              : null;
+            const needsThisPtr = !method.isStatic && (config.logging.showThis || config.ui?.instanceIds?.enabled);
+            const thisPtr = needsThisPtr ? args[0].toString() : null;
 
             // Store context for onLeave
             this.__ctx = {
@@ -345,6 +344,7 @@
                 methodName: method.name,
                 args: argsData,
                 thisPtr,
+                showThis: config.logging.showThis,
               });
             }
 
