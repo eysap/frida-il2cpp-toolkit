@@ -356,6 +356,8 @@
           },
 
           onLeave: function(retval) {
+            // Guard against missing context (onEnter may have crashed)
+            if (!this.__ctx) return;
             const { isNewRequest, httpContext } = this.__ctx;
 
             if (isNewRequest) {

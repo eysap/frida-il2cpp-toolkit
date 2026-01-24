@@ -125,19 +125,38 @@
   }
 
   /**
+   * Safely extracts class namespace and name for caching
+   * IL2CPP class metadata can be corrupted/inaccessible
+   * @param {Il2Cpp.Class} klass - IL2CPP class object
+   * @returns {{namespace: string, name: string}|null} Class info or null if inaccessible
+   */
+  function safeClassInfo(klass) {
+    if (!klass) return null;
+    try {
+      const ns = klass.namespace;
+      const name = klass.name;
+      if (typeof ns !== "string" || typeof name !== "string") return null;
+      return { namespace: ns, name: name };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /**
    * Checks if class is Dictionary<TKey,TValue>
    * @param {Il2Cpp.Class} klass - IL2CPP class object
    * @returns {boolean} True if Dictionary class
    */
   function isDictionaryClass(klass) {
-    if (!klass) return false;
-    const cacheKey = `${klass.namespace}.${klass.name}`;
+    const info = safeClassInfo(klass);
+    if (!info) return false;
+    const cacheKey = `${info.namespace}.${info.name}`;
     if (classTypeCache.has(cacheKey)) {
       return classTypeCache.get(cacheKey) === "dictionary";
     }
     const result =
-      klass.namespace === "System.Collections.Generic" &&
-      klass.name.startsWith("Dictionary`2");
+      info.namespace === "System.Collections.Generic" &&
+      info.name.startsWith("Dictionary`2");
     classTypeCache.set(cacheKey, result ? "dictionary" : "other");
     return result;
   }
@@ -148,14 +167,15 @@
    * @returns {boolean} True if List class
    */
   function isListClass(klass) {
-    if (!klass) return false;
-    const cacheKey = `${klass.namespace}.${klass.name}`;
+    const info = safeClassInfo(klass);
+    if (!info) return false;
+    const cacheKey = `${info.namespace}.${info.name}`;
     if (classTypeCache.has(cacheKey)) {
       return classTypeCache.get(cacheKey) === "list";
     }
     const result =
-      klass.namespace === "System.Collections.Generic" &&
-      klass.name.startsWith("List`1");
+      info.namespace === "System.Collections.Generic" &&
+      info.name.startsWith("List`1");
     classTypeCache.set(cacheKey, result ? "list" : "other");
     return result;
   }
@@ -166,8 +186,9 @@
    * @returns {boolean} True if Multimap class
    */
   function isMultimapClass(klass) {
-    if (!klass) return false;
-    return klass.name && klass.name.includes("Multimap`2");
+    const info = safeClassInfo(klass);
+    if (!info) return false;
+    return info.name.includes("Multimap`2");
   }
 
   // ============================================================================
@@ -175,19 +196,84 @@
   // ============================================================================
 
   /**
-   * Reads byte array summary (length only)
+   * Reads byte array summary with smart truncation
+   * - Shows size and first N bytes preview
+   * - Detects empty buffers (all zeros)
+   * - Truncates large buffers to prevent crashes
    * @param {NativePointer} arrayPtr - Byte array pointer
+   * @param {number} [maxPreviewBytes=20] - Max bytes to show in preview
    * @returns {string|null} Array size description or null
    */
-  function readByteArraySummary(arrayPtr) {
+  function readByteArraySummary(arrayPtr, maxPreviewBytes) {
     if (!arrayPtr || arrayPtr.isNull()) return null;
+    maxPreviewBytes = maxPreviewBytes || 20;
+
     try {
-      const maxLength = arrayPtr.add(OFFSETS.ARRAY_MAX_LENGTH).readPointer().toInt32();
-      if (maxLength < 0 || maxLength > LIMITS.MAX_ARRAY_LENGTH) return null;
-      return `Byte[${maxLength}]`;
+      const length = arrayPtr.add(OFFSETS.ARRAY_MAX_LENGTH).readPointer().toInt32();
+      if (length < 0 || length > LIMITS.MAX_ARRAY_LENGTH) return null;
+
+      // Empty array
+      if (length === 0) return "Byte[0]";
+
+      // For large arrays, just show size without preview to avoid crashes
+      if (length > 1024 * 1024) { // > 1MB
+        return `Byte[${formatSize(length)}]`;
+      }
+
+      // Read first bytes for preview (data starts at offset 0x20 for IL2CPP arrays)
+      const dataStart = arrayPtr.add(0x20);
+      const previewLen = Math.min(length, maxPreviewBytes);
+      const bytes = [];
+      let allZeros = true;
+
+      for (let i = 0; i < previewLen; i++) {
+        const b = dataStart.add(i).readU8();
+        bytes.push(b);
+        if (b !== 0) allZeros = false;
+      }
+
+      // Check if remaining bytes are also zeros (sample check for large arrays)
+      if (allZeros && length > previewLen) {
+        // Sample a few more positions to confirm it's likely all zeros
+        const samplePositions = [
+          Math.floor(length / 4),
+          Math.floor(length / 2),
+          Math.floor(3 * length / 4),
+          length - 1
+        ];
+        for (const pos of samplePositions) {
+          if (pos < length) {
+            const b = dataStart.add(pos).readU8();
+            if (b !== 0) {
+              allZeros = false;
+              break;
+            }
+          }
+        }
+      }
+
+      // Format output
+      if (allZeros) {
+        return `Byte[${formatSize(length)}] [empty]`;
+      }
+
+      const preview = bytes.join(",");
+      const suffix = length > previewLen ? `...+${formatSize(length - previewLen)}` : "";
+      return `Byte[${formatSize(length)}] [${preview}${suffix}]`;
     } catch (_) {
       return null;
     }
+  }
+
+  /**
+   * Formats byte size in human-readable form
+   * @param {number} bytes - Size in bytes
+   * @returns {string} Formatted size (e.g., "1.5 MB", "256")
+   */
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes.toString();
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   }
 
   /**
@@ -387,5 +473,8 @@
     findIntField,
     readInt64Arg,
     readNullableInt64Arg,
+
+    // Formatting helpers
+    formatSize,
   };
 })(globalThis);
