@@ -22,7 +22,7 @@ Designed for **selective, high-signal analysis** of large IL2CPP codebases — n
 
 ## Why This Toolkit Exists
 
-This toolkit was built to solve a different problem:
+Designed to solve a different problem :
 
 * Safely explore **large IL2CPP applications**
 * Hook **only what matters**, with predictable performance

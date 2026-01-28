@@ -81,7 +81,7 @@ EOF
 }
 
 check_dependencies() {
-    if ! command -v frida &> /dev/null; then
+    if ! command -v frida frida-ps &> /dev/null; then
         echo -e "${RED}Error: frida command not found${NC}"
         echo "Install with: pip install frida-tools"
         exit 1
@@ -181,31 +181,29 @@ list_processes() {
 }
 
 build_frida_command() {
-    local frida_args=()
+    FRIDA_ARGS=()
 
     # Add all module paths with -l flag
     for module in "${MODULE_LIST[@]}"; do
-        frida_args+=("-l" "$module")
+        FRIDA_ARGS+=("-l" "$module")
     done
 
     # Add target specification
     if [[ -n "${TARGET_PID:-}" ]]; then
-        frida_args+=("-p" "$TARGET_PID")
+        FRIDA_ARGS+=("-p" "$TARGET_PID")
     elif [[ -n "${TARGET_NAME:-}" ]]; then
-        frida_args+=("-n" "$TARGET_NAME")
+        FRIDA_ARGS+=("-n" "$TARGET_NAME")
     elif [[ -n "${TARGET_SPAWN:-}" ]]; then
-        frida_args+=("-f" "$TARGET_SPAWN")
+        FRIDA_ARGS+=("-f" "$TARGET_SPAWN")
     fi
 
     # Add device/host if specified
     if [[ -n "${DEVICE:-}" ]]; then
-        frida_args+=("-D" "$DEVICE")
+        FRIDA_ARGS+=("-D" "$DEVICE")
     fi
     if [[ -n "${HOST:-}" ]]; then
-        frida_args+=("-H" "$HOST")
+        FRIDA_ARGS+=("-H" "$HOST")
     fi
-
-    echo "${frida_args[@]}"
 }
 
 ###############################################################################
@@ -268,8 +266,11 @@ main() {
     echo -e "${BLUE}Loading modules in dependency order...${NC}"
     echo ""
 
-    local frida_cmd
-    frida_cmd=(frida $(build_frida_command))
+    # Build frida arguments
+    build_frida_command
+
+    # Construct final command array
+    local frida_cmd=(frida "${FRIDA_ARGS[@]}")
 
     echo -e "${GREEN}Executing:${NC}"
     echo "  ${frida_cmd[*]}"
