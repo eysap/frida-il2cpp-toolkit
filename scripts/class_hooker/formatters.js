@@ -511,7 +511,7 @@
 
     const classInfo = safeObjectClassInfo(obj);
     if (!classInfo) {
-      return `<inaccessible>@${ptr}`;
+      return `<native>@${ptr}`;
     }
 
     if (utils.isStringType(classInfo.fullName)) {
