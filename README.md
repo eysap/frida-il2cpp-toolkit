@@ -135,6 +135,12 @@ Configuration:
 
 ---
 
+## Output Examples
+
+![Hook Output Example](screenshots/hook.png)
+
+---
+
 ### 1. Configure Your Target
 
 `scripts/class_hooker/config.js`:
@@ -197,12 +203,6 @@ dump: {
   types: ["UserProfile", "GameState"],
 }
 ```
-
----
-
-## Output Examples
-
-![Hook Output Example](screenshots/hook.png)
 
 ---
 
