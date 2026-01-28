@@ -100,6 +100,41 @@ scripts/class_hooker/
 
 ## Quick Start
 
+### Launch Script Helper
+
+```bash
+./launch.sh --help
+```
+
+```
+Usage: ./launch.sh [OPTIONS]
+
+Options:
+  -p, --pid PID           Attach to process by PID
+  -n, --name NAME         Attach to process by name
+  -f, --spawn PACKAGE     Spawn and attach to package/binary
+  -d, --device DEVICE     Use specific device (default: local)
+  -H, --host HOST         Connect to remote frida-server
+  --bridge PATH           Override frida-il2cpp-bridge path
+  --list                  List running processes
+  --help                  Show this help message
+
+Examples:
+  ./launch.sh -p 12345              # Attach to PID
+  ./launch.sh -n "bin.x64"          # Attach by name
+  ./launch.sh -f com.example.app    # Spawn and attach
+  ./launch.sh --bridge /path/to/bridge.js # Override bridge path
+  ./launch.sh --list                   # List processes
+
+Configuration:
+  Set BRIDGE_PATH in this script for persistent configuration,
+  or use --bridge for a one-time override.
+```
+
+> **Tip**: Set `BRIDGE_PATH` in `launch.sh` once, then use simple commands like `./launch.sh -n "bin.x64"`
+
+---
+
 ### 1. Configure Your Target
 
 `scripts/class_hooker/config.js`:
@@ -121,38 +156,6 @@ const CONFIG = {
 
 > You only need `target`, `filters`, and `logging` to get started.
 > Everything else defaults to safe, conservative behavior, but remains fully tunable for when you need to go surgical.
-
----
-
-### 2. Run (Desktop)
-
-```bash
-frida \
-  -l /path/to/frida-il2cpp-bridge/dist/index.js \
-  -l scripts/class_hooker/constants.js \
-  -l scripts/class_hooker/config.js \
-  -l scripts/class_hooker/utils.js \
-  -l scripts/class_hooker/formatters.js \
-  -l scripts/class_hooker/http-analysis.js \
-  -l scripts/class_hooker/core.js \
-  -l scripts/class_hooker/index.js \
-  -p $(pidof application.x64)
-```
-
-### 3. Run (Mobile)
-
-```bash
-frida -U \
-  -l /path/to/frida-il2cpp-bridge/dist/index.js \
-  -l scripts/class_hooker/constants.js \
-  -l scripts/class_hooker/config.js \
-  -l scripts/class_hooker/utils.js \
-  -l scripts/class_hooker/formatters.js \
-  -l scripts/class_hooker/http-analysis.js \
-  -l scripts/class_hooker/core.js \
-  -l scripts/class_hooker/index.js \
-  -f com.example.app
-```
 
 ---
 
