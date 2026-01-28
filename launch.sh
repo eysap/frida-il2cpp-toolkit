@@ -39,6 +39,8 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+GRAY='\033[0;90m'
 NC='\033[0m'
 
 ###############################################################################
@@ -54,31 +56,34 @@ print_banner() {
 }
 
 print_usage() {
-    cat << EOF
-Usage: $0 [OPTIONS]
+    echo -e "${YELLOW}Usage:${NC} ${CYAN}$0${NC} ${GREEN}[OPTIONS]${NC}"
+    echo ""
 
-Options:
-    -p, --pid PID           Attach to process by PID
-    -n, --name NAME         Attach to process by name
-    -f, --spawn PACKAGE     Spawn and attach to package/binary
-    -d, --device DEVICE     Use specific device (default: local)
-    -H, --host HOST         Connect to remote frida-server
-    --bridge PATH           Override frida-il2cpp-bridge path
-    --list                  List running processes
-    --help                  Show this help message
+    echo -e "${YELLOW}Options:${NC}"
+    echo -e "  ${GREEN}-p, --pid${NC} ${CYAN}PID${NC}           Attach to process by PID"
+    echo -e "  ${GREEN}-n, --name${NC} ${CYAN}NAME${NC}         Attach to process by name"
+    echo -e "  ${GREEN}-f, --spawn${NC} ${CYAN}PACKAGE${NC}     Spawn and attach to package/binary"
+    echo -e "  ${GREEN}-d, --device${NC} ${CYAN}DEVICE${NC}     Use specific device (default: local)"
+    echo -e "  ${GREEN}-H, --host${NC} ${CYAN}HOST${NC}         Connect to remote frida-server"
+    echo -e "  ${GREEN}--bridge${NC} ${CYAN}PATH${NC}           Override frida-il2cpp-bridge path"
+    echo -e "  ${GREEN}--list${NC}                  List running processes"
+    echo -e "  ${GREEN}--help${NC}                  Show this help message"
+    echo ""
 
-Examples:
-    $0 -p 12345                         # Attach to PID 12345
-    $0 -n "bin.x64"                     # Attach to process by name
-    $0 -f com.example.app               # Spawn app and attach
-    $0 --bridge /path/to/bridge.js      # Use alternative bridge path
-    $0 --list                           # List all processes
+    echo -e "${YELLOW}Examples:${NC}"
+    echo -e "  ${CYAN}$0${NC} ${GREEN}-p${NC} ${CYAN}12345${NC}              ${GRAY}# Attach to PID${NC}"
+    echo -e "  ${CYAN}$0${NC} ${GREEN}-n${NC} ${CYAN}\"bin.x64\"${NC}          ${GRAY}# Attach by name${NC}"
+    echo -e "  ${CYAN}$0${NC} ${GREEN}-f${NC} ${CYAN}com.example.app${NC}    ${GRAY}# Spawn and attach${NC}"
+    echo -e "  ${CYAN}$0${NC} ${GREEN}--bridge${NC} ${CYAN}/path/to/bridge.js${NC} ${GRAY}# Override bridge path${NC}"
+    echo -e "  ${CYAN}$0${NC} ${GREEN}--list${NC}                   ${GRAY}# List processes${NC}"
+    echo ""
 
-Configuration:
-    You can set BRIDGE_PATH in this script for persistent configuration,
-    or use --bridge flag for one-time override.
-EOF
+    echo -e "${YELLOW}Configuration:${NC}"
+    echo -e "  Set ${GREEN}BRIDGE_PATH${NC} in this script for persistent configuration,"
+    echo -e "  or use ${GREEN}--bridge${NC} for a one-time override."
+    echo ""
 }
+
 
 check_dependencies() {
     if ! command -v frida frida-ps &> /dev/null; then
