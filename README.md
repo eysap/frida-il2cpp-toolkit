@@ -202,27 +202,7 @@ dump: {
 
 ## Output Examples
 
-### Method Call
-
-```
-[CALL] ApiClient.SendRequest(method="POST", url="https://api.example.com/v1/login")
-```
-
-### Return Value
-
-```
-[RET] SendRequest -> HttpResponse@0x7f123456 "status=200"
-```
-
-### Object Dump
-
-```
-==== DUMP UserProfile @ 0x7f123456 ====
-  userId: "12345"
-  level: 42
-  inventory: List[15]
-==== END DUMP ====
-```
+![Hook Output Example](screenshots/hook.png)
 
 ---
 
