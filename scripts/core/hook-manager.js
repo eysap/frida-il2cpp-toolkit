@@ -9,7 +9,7 @@
  * - Hook lifecycle management
  * - Error handling and validation
  *
- * Designed to be used by all plugins (logger, skip-anim, speed-hack, etc.)
+ * Designed to be used by all plugins (logger, combat-anim, etc.)
  *
  * @module hook-manager
  */

@@ -1,0 +1,215 @@
+
+## ProjectileStep
+[+17.679s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep..ctor()
+  ├── gfxId         : System.Int32(8942)
+  ├── cellId        : System.Int32(424)
+  ├── provider      : evv@0x716df5345200 <native>
+  ├── angle         : null
+  ├── xOffset       : null
+  ├── yOffset       : null
+  ├── frameOffset   : null
+  ├── directionType : Core.DataCenter.Metadata.Spell.ProjectileDirectionType(1)
+  └── this    : 0x716cff3d46e0
+  Stack:
+    0x716f9b8a72d0 GameAssembly.so!0x54a72d0
+[+17.801s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep.bgpr()
+  └── this    : 0x716cff3d46e0
+  Stack:
+    0x716f9b753946 GameAssembly.so!0x5353946
+[+17.807s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep..ctor()
+  ├── gfxId         : System.Int32(8943)
+  ├── cellId        : System.Int32(424)
+  ├── provider      : evv@0x716df5345200 <native>
+  ├── angle         : null
+  ├── xOffset       : null
+  ├── yOffset       : null
+  ├── frameOffset   : null
+  ├── directionType : null
+  └── this    : 0x716cff3d4500
+  Stack:
+    0x716f9b8a72d0 GameAssembly.so!0x54a72d0
+[+17.811s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep.bgpr()
+  └── this    : 0x716cff3d4500
+  Stack:
+    0x716f9b753946 GameAssembly.so!0x5353946
+[+18.138s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep.bgmb()
+  └── this    : 0x716cff3d46e0
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+    0x716f9b74602b GameAssembly.so!0x534602b
+    0x716f9b745b9e GameAssembly.so!0x5345b9e
+    0x716f9c93ec72 GameAssembly.so!0x653ec72
+    0x716f9ea7e50a GameAssembly.so!0x867e50a
+    0x716f99cdcc93 GameAssembly.so!0x38dcc93
+[+18.171s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep.bgpt()
+  ├── a    : Core.Rendering.Entity.Entity@0x716cff3d4640 "Entity[id: -99376, tags: cyoj, cellId: 424, isVisible: True, animator: EntityAnimator[animation: EntityAnimation[fullName: FX_0, isLoop: False, isForce: True, playbackMode: czas]]]" {cyln=1272, cylo=16778489, cylp=33554552, cylq=ecs, cylr=System.Threading.CancellationTokenSource, cyls=EntitySprite[name: entity_projectile_-99376, isVisible: True]}
+  └── this    : 0x716cff3d46e0
+  Stack:
+    0x716f9bf060c4 GameAssembly.so!0x5b060c4
+[+18.176s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep.bgmb()
+  └── this    : 0x716cff3d4500
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+    0x716f9b74602b GameAssembly.so!0x534602b
+    0x716f9b745b9e GameAssembly.so!0x5345b9e
+    0x716f9c93ec72 GameAssembly.so!0x653ec72
+    0x716f9ea7e50a GameAssembly.so!0x867e50a
+    0x716f99cdcc93 GameAssembly.so!0x38dcc93
+[+18.374s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep.bgpt()
+  ├── a    : Core.Rendering.Entity.Entity@0x716cff3d4460 "Entity[id: -99375, tags: cyoj, cellId: 424, isVisible: True, animator: EntityAnimator[animation: EntityAnimation[fullName: FX_0, isLoop: False, isForce: True, playbackMode: czas]]]" {cyln=1273, cylo=16778490, cylp=33554553, cylq=ecs, cylr=System.Threading.CancellationTokenSource, cyls=EntitySprite[name: entity_projectile_-99375, isVisible: True]}
+  └── this    : 0x716cff3d4500
+  Stack:
+    0x716f9bf060c4 GameAssembly.so!0x5b060c4
+[+19.310s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep.bgpu()
+  ├── a    : Core.Rendering.Entity.Entity@0x716cff3d4640 "Entity[id: -99376, tags: cyoj, cellId: 424, isVisible: True, animator: EntityAnimator[animation: EntityAnimation[fullName: FX_0, isLoop: False, isForce: True, playbackMode: czas]]]" {cyln=1272, cylo=16778489, cylp=33554552, cylq=ecs, cylr=System.Threading.CancellationTokenSource, cyls=EntitySprite[name: entity_projectile_-99376, isVisible: True]}
+  └── this    : 0x716cff3d46e0
+  Stack:
+    0x716f99da4ea0 GameAssembly.so!0x39a4ea0
+[+19.345s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep.bgpu()
+  ├── a    : Core.Rendering.Entity.Entity@0x716cff3d4460 "Entity[id: -99375, tags: cyoj, cellId: 424, isVisible: True, animator: EntityAnimator[animation: EntityAnimation[fullName: FX_0, isLoop: False, isForce: True, playbackMode: czas]]]" {cyln=1273, cylo=16778490, cylp=33554553, cylq=ecs, cylr=System.Threading.CancellationTokenSource, cyls=EntitySprite[name: entity_projectile_-99375, isVisible: True]}
+  └── this    : 0x716cff3d4500
+  Stack:
+    0x716f99da4ea0 GameAssembly.so!0x39a4ea0
+
+  ## ProjectileInLineStep
+  pas de hook detetcer en combat pour ce step sur ce combat
+
+
+## fqt
+→ fqt..ctor()
+  ├── a    : Core.Rendering.Entity.Entity@0x716db1582140 "Entity[id: -99341, tags: cyon, cellId: 459, isVisible: True, animator: EntityAnimator[animation: EntityAnimation[fullName: AnimStatique_0, isLoop: True, isForce: True, playbackMode: czau]]]" {cyln=1333, cylo=16778550, cylp=1, cylq=ecs, cylr=System.Threading.CancellationTokenSource, cyls=EntitySprite[name: entity_animated_element_1875_-99341, isVisible: False]}
+  ├── b    : System.String@0x716dd60004c0 "AnimStatique" len=12
+  ├── c    : System.Boolean(true)
+  ├── d    : System.Boolean(true)
+  ├── e    : System.Boolean(true)
+  ├── f    : null
+  ├── g    : null
+  ├── h    : null
+  └── this    : 0x716d19f75840
+  Stack:
+    0x716f9b0830e6 GameAssembly.so!0x4c830e6
+[+9.743s] ────────────────────────────────────────
+→ fqt..ctor()
+  ├── a    : Core.Rendering.Entity.Entity@0x716db1582e60 "Entity[id: -99342, tags: cyon, cellId: 301, isVisible: True, animator: EntityAnimator[animation: EntityAnimation[fullName: AnimStatique_0, isLoop: True, isForce: True, playbackMode: czau]]]" {cyln=1332, cylo=16778549, cylp=1, cylq=ecs, cylr=System.Threading.CancellationTokenSource, cyls=EntitySprite[name: entity_animated_element_1643_-99342, isVisible: False]}
+  ├── b    : System.String@0x716dd60004c0 "AnimStatique" len=12
+  ├── c    : System.Boolean(true)
+  ├── d    : System.Boolean(true)
+  ├── e    : System.Boolean(true)
+  ├── f    : null
+  ├── g    : null
+  ├── h    : null
+  └── this    : 0x716d19facd80
+  Stack:
+    0x716f9b0830e6 GameAssembly.so!0x4c830e6
+[+9.748s] ────────────────────────────────────────
+→ fqt..ctor()
+  ├── a    : Core.Rendering.Entity.Entity@0x716dd9928c80 "Entity[id: -99343, tags: cyon, cellId: 100, isVisible: True, animator: EntityAnimator[animation: EntityAnimation[fullName: AnimStatique_0, isLoop: True, isForce: True, playbackMode: czau]]]" {cyln=1331, cylo=16778548, cylp=1, cylq=ecs, cylr=System.Threading.CancellationTokenSource, cyls=EntitySprite[name: entity_animated_element_1875_-99343, isVisible: False]}
+  ├── b    : System.String@0x716dd60004c0 "AnimStatique" len=12
+  ├── c    : System.Boolean(true)
+  ├── d    : System.Boolean(true)
+  ├── e    : System.Boolean(true)
+  ├── f    : null
+  ├── g    : null
+  ├── h    : null
+  └── this    : 0x716d19facc60
+  Stack:
+    0x716f9b0830e6 GameAssembly.so!0x4c830e6
+[+9.753s] ────────────────────────────────────────
+→ fqt..ctor()
+  ├── a    : Core.Rendering.Entity.Entity@0x716dd9928e60 "Entity[id: -99344, tags: cyon, cellId: 42, isVisible: True, animator: EntityAnimator[animation: EntityAnimation[fullName: AnimStatique_0, isLoop: True, isForce: True, playbackMode: czau]]]" {cyln=1330, cylo=16778547, cylp=1, cylq=ecs, cylr=System.Threading.CancellationTokenSource, cyls=EntitySprite[name: entity_animated_element_1636_-99344, isVisible: False]}
+  ├── b    : System.String@0x716dd60004c0 "AnimStatique" len=12
+  ├── c    : System.Boolean(true)
+  ├── d    : System.Boolean(true)
+  ├── e    : System.Boolean(true)
+  ├── f    : null
+  ├── g    : null
+  ├── h    : null
+  └── this    : 0x716d19facc00
+  Stack:
+    0x716f9b0830e6 GameAssembly.so!0x4c830e6
+[+12.733s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d19f75840
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+12.737s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d19facc60
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+13.538s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d19facd80
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+13.904s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d19facc00
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+14.678s] ────────────────────────────────────────
+→ fqt..ctor()
+  ├── a    : Core.Rendering.Entity.Entity@0x716db1582e60 "Entity[id: -99342, tags: cyon, cellId: 301, isVisible: True, animator: EntityAnimator[animation: EntityAnimation[fullName: AnimStatique_0, isLoop: True, isForce: False, playbackMode: czar]]]" {cyln=1332, cylo=16778549, cylp=1, cylq=ecs, cylr=System.Threading.CancellationTokenSource, cyls=EntitySprite[name: entity_animated_element_1643_-99342, isVisible: True]}
+  ├── b    : System.String@0x716dd60004c0 "AnimStatique" len=12
+  ├── c    : System.Boolean(true)
+  ├── d    : System.Boolean(true)
+  ├── e    : System.Boolean(true)
+  ├── f    : null
+  ├── g    : null
+  ├── h    : null
+  └── this    : 0x716d139c5780
+  Stack:
+    0x716f9b0830e6 GameAssembly.so!0x4c830e6
+[+18.459s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d139c5780
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+20.035s] ────────────────────────────────────────
+→ fqt..ctor()
+  ├── a    : Core.Rendering.Entity.Entity@0x716db1582e60 "Entity[id: -99342, tags: cyon, cellId: 301, isVisible: True, animator: EntityAnimator[animation: EntityAnimation[fullName: AnimStatique_0, isLoop: True, isForce: False, playbackMode: czar]]]" {cyln=1332, cylo=16778549, cylp=1, cylq=ecs, cylr=System.Threading.CancellationTokenSource, cyls=EntitySprite[name: entity_animated_element_1643_-99342, isVisible: True]}
+  ├── b    : System.String@0x716dd60004c0 "AnimStatique" len=12
+  ├── c    : System.Boolean(true)
+  ├── d    : System.Boolean(true)
+  ├── e    : System.Boolean(true)
+  ├── f    : null
+  ├── g    : null
+  ├── h    : null
+  └── this    : 0x716d124352a0
+  Stack:
+    0x716f9b0830e6 GameAssembly.so!0x4c830e6
+[+20.401s] ────────────────────────────────────────
+→ fqt..ctor()
+  ├── a    : Core.Rendering.Entity.Entity@0x716db1582140 "Entity[id: -99341, tags: cyon, cellId: 459, isVisible: True, animator: EntityAnimator[animation: EntityAnimation[fullName: AnimStatique_0, isLoop: True, isForce: False, playbackMode: czar]]]" {cyln=1333, cylo=16778550, cylp=1, cylq=ecs, cylr=System.Threading.CancellationTokenSource, cyls=EntitySprite[name: entity_animated_element_1875_-99341, isVisible: True]}
+  ├── b    : System.String@0x716dd60004c0 "AnimStatique" len=12
+  ├── c    : System.Boolean(true)
+  ├── d    : System.Boolean(true)
+  ├── e    : System.Boolean(true)
+  ├── f    : null
+  ├── g    : null
+  ├── h    : null
+  └── this    : 0x716d1244b4e0
+  Stack:
+    0x716f9b0830e6 GameAssembly.so!0x4c830e6
+[+23.378s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d1244b4e0
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+23.816s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d124352a0
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+24.514s] ────────────────────────────────────────
+

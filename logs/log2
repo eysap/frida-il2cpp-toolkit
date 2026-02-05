@@ -1,0 +1,155 @@
+[+11.012s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716ddb683dc0
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+11.016s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716ddb6839a0
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+11.018s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716ddb6838f0
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+11.022s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716ddb683840
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+14.009s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d1a470e40
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+14.013s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d1a470c00
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+14.811s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d1a470c60
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+15.184s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d1a470ba0
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+15.985s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716d1a473bb0
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+18.564s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep.bgmb()
+  └── this    : 0x716cff70f960
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+    0x716f9b74602b GameAssembly.so!0x534602b
+    0x716f9b745b9e GameAssembly.so!0x5345b9e
+    0x716f9b13314f GameAssembly.so!0x4d3314f
+    0x716f9b48aeaa GameAssembly.so!0x508aeaa
+    0x716f99a2dc28 GameAssembly.so!0x362dc28
+[+19.771s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d14b1ad80
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+19.869s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716d141b9790
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+20.272s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep.bgmb()
+  └── this    : 0x716cfea9adc0
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+    0x716f9b74602b GameAssembly.so!0x534602b
+    0x716f9b745b9e GameAssembly.so!0x5345b9e
+    0x716f9c93ec72 GameAssembly.so!0x653ec72
+    0x716f9ea7e50a GameAssembly.so!0x867e50a
+    0x716f99cdcc93 GameAssembly.so!0x38dcc93
+[+20.313s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep.bgmb()
+  └── this    : 0x716cfea9ab40
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+    0x716f9b74602b GameAssembly.so!0x534602b
+    0x716f9b745b9e GameAssembly.so!0x5345b9e
+    0x716f9c93ec72 GameAssembly.so!0x653ec72
+    0x716f9ea7e50a GameAssembly.so!0x867e50a
+    0x716f99cdcc93 GameAssembly.so!0x38dcc93
+[+21.677s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716d141cfe70
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+23.588s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716d141cfbb0
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+24.656s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d134f3a20
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+25.718s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716d13af0790
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+25.918s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716d13af0630
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+25.988s] ────────────────────────────────────────
+→ Core.Engine.Sequencing.Steps.ProjectileStep.bgmb()
+  └── this    : 0x716cfe3c4460
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+    0x716f9b74602b GameAssembly.so!0x534602b
+    0x716f9b745b9e GameAssembly.so!0x5345b9e
+    0x716f9c93ec72 GameAssembly.so!0x653ec72
+    0x716f9ea7e50a GameAssembly.so!0x867e50a
+    0x716f99cdcc93 GameAssembly.so!0x38dcc93
+[+26.053s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716d13a2f580
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+26.058s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716d13af0580
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+27.160s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716d13bedc60
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+27.363s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d136368a0
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+30.069s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d12ce3a20
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+30.134s] ────────────────────────────────────────
+→ fqt.bgmb()
+  └── this    : 0x716d12d44060
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b
+[+30.567s] ────────────────────────────────────────
+→ fqr.bgmb()
+  └── this    : 0x716d13bed0b0
+  Stack:
+    0x716f9b74602b GameAssembly.so!0x534602b

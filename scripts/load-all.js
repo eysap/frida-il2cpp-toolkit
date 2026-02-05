@@ -28,15 +28,9 @@ const pluginScripts = {
     'plugins/logger/core.js',
     'plugins/logger/index.js',
   ],
-  'skip-anim': [
-    'plugins/skip-anim/config.js',
-    'plugins/skip-anim/targets.js',
-    'plugins/skip-anim/index.js',
-  ],
-  'speed-hack': [
-    'plugins/speed-hack/config.js',
-    'plugins/speed-hack/targets.js',
-    'plugins/speed-hack/index.js',
+  'combat-anim': [
+    'plugins/combat-anim/config.js',
+    'plugins/combat-anim/index.js',
   ],
 };
 

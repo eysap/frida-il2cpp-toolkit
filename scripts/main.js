@@ -145,11 +145,8 @@
     if (plugins.logger?.plugin) {
       PluginManager.register('logger', plugins.logger.plugin);
     }
-    if (plugins.skipAnim?.plugin) {
-      PluginManager.register('skip-anim', plugins.skipAnim.plugin);
-    }
-    if (plugins.speedHack?.plugin) {
-      PluginManager.register('speed-hack', plugins.speedHack.plugin);
+    if (plugins.combatAnim?.plugin) {
+      PluginManager.register('combat-anim', plugins.combatAnim.plugin);
     }
 
     // Load plugins based on config

@@ -6,9 +6,9 @@
 # Loads the new plugin architecture with specified plugins.
 #
 # Usage:
-#   ./launch-plugin.sh -n "AppName" --plugin skip-anim
+#   ./launch-plugin.sh -n "AppName" --plugin combat-anim
 #   ./launch-plugin.sh -p 12345 --plugin logger
-#   ./launch-plugin.sh -f com.app --config examples/example-skip-anim.js
+#   ./launch-plugin.sh -f com.app --config examples/example-combat-anim.js
 #
 ###############################################################################
 
@@ -60,9 +60,9 @@ print_usage() {
     echo ""
 
     echo -e "${YELLOW}Plugin Options:${NC}"
-    echo -e "  ${GREEN}--plugin${NC} ${CYAN}NAME${NC}           Load specific plugin (logger|skip-anim|speed-hack)"
+    echo -e "  ${GREEN}--plugin${NC} ${CYAN}NAME${NC}           Load specific plugin (logger|combat-anim)"
     echo -e "  ${GREEN}--config${NC} ${CYAN}FILE${NC}           Use custom config file"
-    echo -e "  ${GREEN}--example${NC} ${CYAN}NAME${NC}          Use example config (logger|skip-anim|custom-plugin)"
+    echo -e "  ${GREEN}--example${NC} ${CYAN}NAME${NC}          Use example config (logger|combat-anim|custom-plugin)"
     echo ""
 
     echo -e "${YELLOW}Other Options:${NC}"
@@ -73,9 +73,9 @@ print_usage() {
 
     echo -e "${YELLOW}Examples:${NC}"
     echo -e "  ${CYAN}$0${NC} ${GREEN}-n${NC} ${CYAN}\"bin.x64\"${NC} ${GREEN}--example${NC} ${CYAN}logger${NC}"
-    echo -e "  ${CYAN}$0${NC} ${GREEN}-p${NC} ${CYAN}12345${NC} ${GREEN}--example${NC} ${CYAN}skip-anim${NC}"
+    echo -e "  ${CYAN}$0${NC} ${GREEN}-p${NC} ${CYAN}12345${NC} ${GREEN}--example${NC} ${CYAN}combat-anim${NC}"
     echo -e "  ${CYAN}$0${NC} ${GREEN}-f${NC} ${CYAN}com.app${NC} ${GREEN}--config${NC} ${CYAN}my-config.js${NC}"
-    echo -e "  ${CYAN}$0${NC} ${GREEN}-n${NC} ${CYAN}\"game\"${NC} ${GREEN}--plugin${NC} ${CYAN}logger${NC} ${GREEN}--plugin${NC} ${CYAN}skip-anim${NC}"
+    echo -e "  ${CYAN}$0${NC} ${GREEN}-n${NC} ${CYAN}\"game\"${NC} ${GREEN}--plugin${NC} ${CYAN}logger${NC} ${GREEN}--plugin${NC} ${CYAN}combat-anim${NC}"
     echo ""
 }
 
@@ -167,18 +167,10 @@ build_module_list() {
                         "$PLUGINS_DIR/logger/index.js"
                     )
                     ;;
-                skip-anim)
+                combat-anim)
                     MODULE_LIST+=(
-                        "$PLUGINS_DIR/skip-anim/config.js"
-                        "$PLUGINS_DIR/skip-anim/targets.js"
-                        "$PLUGINS_DIR/skip-anim/index.js"
-                    )
-                    ;;
-                speed-hack)
-                    MODULE_LIST+=(
-                        "$PLUGINS_DIR/speed-hack/config.js"
-                        "$PLUGINS_DIR/speed-hack/targets.js"
-                        "$PLUGINS_DIR/speed-hack/index.js"
+                        "$PLUGINS_DIR/combat-anim/config.js"
+                        "$PLUGINS_DIR/combat-anim/index.js"
                     )
                     ;;
                 *)
@@ -274,7 +266,18 @@ main() {
                 ;;
             --example)
                 CONFIG_FILE="$EXAMPLES_DIR/example-$2.js"
-                PLUGIN_NAMES+=("$2")  # Auto-load corresponding plugin
+                # Auto-load corresponding plugin (example names may include suffixes like -trace)
+                case "$2" in
+                    combat-anim* )
+                        PLUGIN_NAMES+=("combat-anim")
+                        ;;
+                    logger* )
+                        PLUGIN_NAMES+=("logger")
+                        ;;
+                    * )
+                        PLUGIN_NAMES+=("$2")
+                        ;;
+                esac
                 shift 2
                 ;;
             --list)
