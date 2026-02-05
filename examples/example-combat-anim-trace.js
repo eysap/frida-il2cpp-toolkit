@@ -26,6 +26,14 @@ globalThis.IL2CPPToolkitConfig = {
           "fqx.bgmb",
         ],
         targets: [
+          // Sequencer add (always log, and print step class)
+          {
+            fullName: "Core.Engine.Sequencing.SerialSequencer",
+            methods: ["bgne"],
+            inspectArgIndex: 1,
+            inspectToString: true,
+            ignoreTrack: true,
+          },
           // Base step lifecycle (only logs when tracked)
           { className: "fpq", methods: ["Start", "bgmm", "bgml", "bgmn"] },
           // WaitForFrames helper (static)

@@ -3,19 +3,14 @@
 /**
  * Combat Anim Plugin Configuration
  *
- * mode  -> "skip" | "speed" | ["skip","speed"] | "trace"
+ * mode  -> "skip" | "trace"
  * skip  -> step short-circuiting
- * speed -> delay/frame acceleration
  * trace -> low-noise tracing for discovery
  */
 
 (function (global) {
   const CONFIG = {
     mode: "skip",
-
-    // Runtime tuning (can be overridden via RPC)
-    speedFactor: 2.0,
-    minDelayMs: 16,
 
     trace: {
       enabled: false,
@@ -37,13 +32,13 @@
       dedupe: true,
       log: false,
 
-      targets: [
-        "Core.Engine.Sequencing.Steps.ProjectileStep.bgmb",
-        "Core.Engine.Sequencing.Steps.ProjectileInLineStep.bgmb",
-        "fqt.bgmb",
-        "fqr.bgmb",
-        "fqx.bgmb",
-      ],
+      // Optional: steps to short-circuit after start (bgmb). Leave empty if using dropOnAdd only.
+      targets: [],
+
+      // Drop steps at add-time (before they run). Use class names or full names.
+      dropOnAdd: [],
+      // Optional: drop if step.ToString() contains any of these substrings
+      dropOnAddToStringContains: [],
 
       // Candidate methods to mark a step as completed
       // From trace: bgml consistently appears as the final step-complete signal.
@@ -52,18 +47,7 @@
       ],
     },
 
-    speed: {
-      enabled: true,
-      log: false,
-      minFrames: 1,
-
-      // WaitForFrames: static method qn.oeh(int frameCount, float frameRate, CancellationToken ct)
-      waitForFrames: {
-        target: "qn.oeh",
-        frameCountArg: 0,
-        paramCount: 3,
-      },
-    },
+    // speed: { ... } // removed (not used for current use-case)
   };
 
   function mergeDefaults(target, defaults) {

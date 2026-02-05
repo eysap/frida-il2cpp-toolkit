@@ -22,11 +22,12 @@ globalThis.IL2CPPToolkitConfig = {
       // },
 
       targets: [
-        { className: "ProjectileStep", methods: ["bgmb"] },
-        { className: "ProjectileInLineStep", methods: ["bgmb"] },
-        { className: "fqt", methods: ["bgmb"] },
-        { className: "fqr", methods: ["bgmb"] },
-        { className: "fqx", methods: ["bgmb"] },
+        "Core.Engine.Sequencing.SerialSequencer.bgne",
+        // { className: "ProjectileStep", methods: ["bgmb"] },
+        // { className: "ProjectileInLineStep", methods: ["bgmb"] },
+        // { className: "fqt", methods: ["bgmb"] },
+        // { className: "fqr", methods: ["bgmb"] },
+        // { className: "fqx", methods: ["bgmb"] },
       ],
 
       // Method filters
@@ -54,7 +55,7 @@ globalThis.IL2CPPToolkitConfig = {
         },
         objects: {
           tryToString: true,
-          showFields: true,
+          showFields: false,
           maxFields: 6,
         },
       },

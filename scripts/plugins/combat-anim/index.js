@@ -3,7 +3,6 @@
 /**
  * Combat Anim Plugin
  * - Skip mode: short-circuit visual steps
- * - Speed mode: accelerate delays/frames
  * - Trace mode: discovery hooks
  */
 
@@ -26,8 +25,7 @@
     finishedSteps: new Set(),
     finishPending: new Set(),
     hooks: [],
-    speedFactor: 1.0,
-    minDelayMs: 16,
+    replaced: new Set(),
     traceTracked: new Set(),
   };
 
@@ -86,6 +84,9 @@
           target: normalized,
           methodName,
           paramCount: def.paramCount,
+          inspectArgIndex: entry?.inspectArgIndex ?? entry?.inspectArg,
+          inspectToString: entry?.inspectToString === true,
+          ignoreTrack: entry?.ignoreTrack === true,
         });
       });
     });
@@ -197,6 +198,93 @@
     });
   }
 
+  function shouldDropStep(stepPtr, cfg) {
+    if (!stepPtr || (typeof stepPtr.isNull === "function" && stepPtr.isNull())) return false;
+    let className = null;
+    let fullName = null;
+    let toStringValue = null;
+
+    try {
+      const obj = new Il2Cpp.Object(stepPtr);
+      const klass = obj.class;
+      className = klass?.name || null;
+      fullName = klass?.namespace ? `${klass.namespace}.${klass.name}` : className;
+
+      const list = Array.isArray(cfg.dropOnAdd) ? cfg.dropOnAdd : [];
+      if (list.length > 0) {
+        const match = list.some((val) => val === className || val === fullName);
+        if (match) return { className, fullName, toStringValue };
+      }
+
+      const filters = Array.isArray(cfg.dropOnAddToStringContains)
+        ? cfg.dropOnAddToStringContains
+        : [];
+      if (filters.length > 0) {
+        try {
+          const res = obj.method("ToString").invoke();
+          if (res && !(typeof res.isNull === "function" && res.isNull())) {
+            toStringValue = new Il2Cpp.String(res).content;
+          }
+        } catch (_) {}
+        if (toStringValue) {
+          const hit = filters.some((f) => toStringValue.includes(f));
+          if (hit) return { className, fullName, toStringValue };
+        }
+      }
+    } catch (_) {}
+
+    return false;
+  }
+
+  function hookSkipAddFilter() {
+    const ui = getUI();
+    const cfg = state.config?.skip || {};
+    const list = Array.isArray(cfg.dropOnAdd) ? cfg.dropOnAdd : [];
+    const filters = Array.isArray(cfg.dropOnAddToStringContains) ? cfg.dropOnAddToStringContains : [];
+    if (list.length === 0 && filters.length === 0) return;
+
+    const target = hookManager.normalizeTarget({
+      fullName: "Core.Engine.Sequencing.SerialSequencer",
+      className: "SerialSequencer",
+    });
+    const chosen = hookManager.findClass(target, true);
+    if (!chosen) {
+      if (ui) ui.warn("combat-anim: SerialSequencer not found (skip add filter disabled)");
+      return;
+    }
+    const klass = chosen.klass;
+    const method = hookManager.findMethod(klass, "bgne", 1);
+    if (!method || !method.virtualAddress || method.virtualAddress.isNull()) {
+      if (ui) ui.warn("combat-anim: SerialSequencer.bgne not found");
+      return;
+    }
+
+    const addr = method.virtualAddress;
+    if (state.replaced.has(addr.toString())) return;
+
+    const original = new NativeFunction(addr, "void", ["pointer", "pointer"]);
+
+    const replacement = new NativeCallback(function (thisPtr, stepPtr) {
+      if (!modeEnabled("skip") || !state.config?.skip?.enabled) {
+        return original(thisPtr, stepPtr);
+      }
+      const dropInfo = shouldDropStep(stepPtr, cfg);
+      if (dropInfo) {
+        if (cfg.log && ui) {
+          const label = dropInfo.fullName || dropInfo.className || "step";
+          const detail = dropInfo.toStringValue ? ` \"${dropInfo.toStringValue}\"` : "";
+          ui.info(`combat-anim: dropOnAdd ${label}${detail}`);
+        }
+        return;
+      }
+      return original(thisPtr, stepPtr);
+    }, "void", ["pointer", "pointer"]);
+
+    Interceptor.replace(addr, replacement);
+    state.replaced.add(addr.toString());
+    if (ui) ui.success("combat-anim: hook dropOnAdd SerialSequencer.bgne");
+  }
+
   function hookTraceTargets(targets) {
     const ui = getUI();
     const cfg = state.config?.trace || {};
@@ -223,14 +311,41 @@
             return;
           }
 
-          if (cfg.onlyWhenTracked && !isStatic) {
+          if (cfg.onlyWhenTracked && !entry.ignoreTrack && !isStatic) {
             const key = thisPtr ? thisPtr.toString() : null;
             if (!key || !state.traceTracked.has(key)) return;
           }
 
           let thisStr = "";
           if (!isStatic && thisPtr) thisStr = ` this=@${thisPtr}`;
-          if (ui) ui.info(`trace ${resolved.classFullName}.${entry.methodName}${thisStr}`);
+          let extra = "";
+          if (entry.inspectArgIndex !== undefined && entry.inspectArgIndex !== null) {
+            const idx = entry.inspectArgIndex;
+            const argPtr = args[idx];
+            if (argPtr && !(typeof argPtr.isNull === "function" && argPtr.isNull())) {
+              try {
+                const obj = new Il2Cpp.Object(argPtr);
+                const klass = obj.class;
+                const className = klass.namespace ? `${klass.namespace}.${klass.name}` : klass.name;
+                let ts = "";
+                if (entry.inspectToString) {
+                  try {
+                    const res = obj.method("ToString").invoke();
+                    if (res && !(typeof res.isNull === "function" && res.isNull())) {
+                      const s = new Il2Cpp.String(res).content;
+                      ts = s ? ` \"${s}\"` : "";
+                    }
+                  } catch (_) {}
+                }
+                extra = ` arg${idx}=${className}@${argPtr}${ts}`;
+              } catch (_) {
+                extra = ` arg${idx}=<native>@${argPtr}`;
+              }
+            } else {
+              extra = ` arg${idx}=null`;
+            }
+          }
+          if (ui) ui.info(`trace ${resolved.classFullName}.${entry.methodName}${thisStr}${extra}`);
           if (state.config?.trace?.showStack) {
             const stack = Thread.backtrace(this.context, Backtracer.ACCURATE)
               .slice(0, global.IL2CPPHooker?.LIMITS?.MAX_BACKTRACE_DEPTH || 8)
@@ -246,54 +361,6 @@
     });
   }
 
-  function parseMethodTarget(def) {
-    const raw = def && def.target ? def.target : def;
-    const normalized = normalizeTargetDef(raw);
-    if (!normalized) return null;
-    if (!normalized.methods || normalized.methods.length === 0) return null;
-    const methodName = normalized.methods[0];
-    const target = hookManager.normalizeTarget(Object.assign({}, normalized));
-    if (!target.className && !target.fullName) return null;
-    return { target, methodName, paramCount: def?.paramCount, frameCountArg: def?.frameCountArg };
-  }
-
-  function hookWaitForFrames(def) {
-    const ui = getUI();
-    const entry = parseMethodTarget(def);
-    if (!entry) {
-      if (ui) ui.warn("combat-anim: waitForFrames target invalid");
-      return;
-    }
-
-    const resolved = resolveMethodTarget(entry, false);
-    if (!resolved) return;
-
-    const argIndex = Number.isInteger(def?.frameCountArg) ? def.frameCountArg : 0;
-    const minFrames = state.config?.speed?.minFrames ?? 1;
-
-    const detach = Interceptor.attach(resolved.addr, {
-      onEnter: function (args) {
-        if (!modeEnabled("speed") || !state.config?.speed?.enabled) return;
-        const factor = Math.max(0.1, Number(state.speedFactor || 1.0));
-        if (factor <= 1.0) return;
-
-        try {
-          const current = args[argIndex].toInt32();
-          const scaled = Math.max(minFrames, Math.floor(current / factor));
-          if (scaled !== current) {
-            args[argIndex] = ptr(scaled);
-            if (state.config?.speed?.log && ui) {
-              ui.info(`waitForFrames: ${current} -> ${scaled} (x${factor})`);
-            }
-          }
-        } catch (_) {}
-      },
-    });
-
-    state.hooks.push(detach);
-    if (ui) ui.success(`combat-anim: hooked speed ${resolved.classFullName}.${entry.methodName}`);
-  }
-
   function installHooks() {
     const cfg = state.config;
     if (!cfg) return;
@@ -307,18 +374,14 @@
       hookTraceTargets(trackTargets.concat(traceTargets));
     }
     if (cfg.skip?.enabled) {
+      hookSkipAddFilter();
       hookSkipTargets(buildMethodTargets(cfg.skip.targets || []));
-    }
-    if (cfg.speed?.enabled && cfg.speed?.waitForFrames) {
-      hookWaitForFrames(cfg.speed.waitForFrames);
     }
   }
 
   function updateRuntimeConfig(partial) {
     if (!partial || typeof partial !== "object") return;
     if (partial.mode !== undefined) state.modes = normalizeModes(partial.mode);
-    if (partial.speedFactor !== undefined) state.speedFactor = Number(partial.speedFactor) || 1.0;
-    if (partial.minDelayMs !== undefined) state.minDelayMs = Number(partial.minDelayMs) || state.minDelayMs;
   }
 
   const CombatAnimPlugin = {
@@ -348,8 +411,6 @@
 
       state.config = this.config;
       state.modes = normalizeModes(this.config.mode);
-      state.speedFactor = Number(this.config.speedFactor) || 1.0;
-      state.minDelayMs = Number(this.config.minDelayMs) || 16;
 
       if (ui) ui.info(`CombatAnim initialized: mode=${Array.from(state.modes).join(",")}`);
       return true;
@@ -366,18 +427,12 @@
             updateRuntimeConfig({ mode });
             return true;
           },
-          setspeed: (speedFactor) => {
-            updateRuntimeConfig({ speedFactor });
-            return true;
-          },
           setconfig: (cfg) => {
             updateRuntimeConfig(cfg || {});
             return true;
           },
           status: () => ({
             mode: Array.from(state.modes),
-            speedFactor: state.speedFactor,
-            minDelayMs: state.minDelayMs,
           }),
         };
       }
@@ -388,6 +443,10 @@
       state.hooks.forEach((h) => {
         try { h.detach(); } catch (_) {}
       });
+      state.replaced.forEach((addr) => {
+        try { Interceptor.revert(ptr(addr)); } catch (_) {}
+      });
+      state.replaced.clear();
       state.hooks = [];
       if (ui) ui.info("CombatAnim stopped");
     },
