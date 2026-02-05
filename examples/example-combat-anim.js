@@ -30,8 +30,8 @@ globalThis.IL2CPPToolkitConfig = {
         targets: [],
 
         finishMethods: ["bgml"],
-        dropOnAdd: ["gee"],
-        dropOnAddToStringContains: [],
+        dropOnAdd: ["gee"], // anim sort
+        dropOnAddToStringContains: ["AnimHit"], // degat subit
       },
     },
   },

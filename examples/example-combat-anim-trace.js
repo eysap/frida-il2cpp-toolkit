@@ -15,18 +15,11 @@ globalThis.IL2CPPToolkitConfig = {
       trace: {
         enabled: true,
         showStack: false,
-        onlyWhenTracked: true,
+        // Only log ToString() of steps being added
+        onlyWhenTracked: false,
         logTrackOn: false,
-        trackOn: [
-          // Track only these step starts (reduce noise)
-          "Core.Engine.Sequencing.Steps.ProjectileStep.bgmb",
-          "Core.Engine.Sequencing.Steps.ProjectileInLineStep.bgmb",
-          "fqt.bgmb",
-          "fqr.bgmb",
-          "fqx.bgmb",
-        ],
+        trackOn: [],
         targets: [
-          // Sequencer add (always log, and print step class)
           {
             fullName: "Core.Engine.Sequencing.SerialSequencer",
             methods: ["bgne"],
@@ -34,10 +27,6 @@ globalThis.IL2CPPToolkitConfig = {
             inspectToString: true,
             ignoreTrack: true,
           },
-          // Base step lifecycle (only logs when tracked)
-          { className: "fpq", methods: ["Start", "bgmm", "bgml", "bgmn"] },
-          // WaitForFrames helper (static)
-          "qn.oeh",
         ],
       },
 
