@@ -475,7 +475,7 @@
       opts.args.forEach((arg, i) => {
         const isLast = i === opts.args.length - 1 && !hasThisLine;
         const branch = isLast ? BOX.tree.last : BOX.tree.branch;
-        const val = v === VERBOSITY.verbose ? arg.value : truncate(arg.value, 100);
+        const val = v === VERBOSITY.verbose ? arg.value : truncate(arg.value, config.truncation?.maxStringLength ?? 200);
         console.log(`  ${branch} ${formatKV(arg.name, val, maxKeyLen)}`);
       });
     }

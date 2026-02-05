@@ -199,19 +199,19 @@
     }
     cachedPreviewConfig = config;
     cachedPreviewOptions = {
-      tryToString: config.formatting.objects.tryToString,
-      previewObjects: config.formatting.objects.showFields,
-      maxObjectFields: config.formatting.objects.maxFields,
-      maxStringLength: config.formatting.strings.maxLength,
-      expandDictionaries: config.formatting.collections.dictionaries.enabled,
-      maxDictEntries: config.formatting.collections.dictionaries.maxEntries,
-      expandLists: config.formatting.collections.lists.enabled,
-      expandMultimap: config.formatting.collections.multimaps.enabled,
-      omitFields: config.formatting.objects.omitFields || [],
-      omitFieldRegex: buildRegexList(config.formatting.objects.omitFieldPatterns),
-      fieldAllowlistByType: config.formatting.objects.fieldAllowlistByType || {},
-      fieldDenylistByType: config.formatting.objects.fieldDenylistByType || {},
-      numbers: config.formatting.numbers || {},
+      tryToString: config.formatting?.objects?.tryToString ?? true,
+      previewObjects: config.formatting?.objects?.showFields ?? true,
+      maxObjectFields: config.formatting?.objects?.maxFields ?? 6,
+      maxStringLength: config.formatting?.strings?.maxLength ?? 200,
+      expandDictionaries: config.formatting?.collections?.dictionaries?.enabled ?? true,
+      maxDictEntries: config.formatting?.collections?.dictionaries?.maxEntries ?? 6,
+      expandLists: config.formatting?.collections?.lists?.enabled ?? true,
+      expandMultimap: config.formatting?.collections?.multimaps?.enabled ?? true,
+      omitFields: config.formatting?.objects?.omitFields || [],
+      omitFieldRegex: buildRegexList(config.formatting?.objects?.omitFieldPatterns || []),
+      fieldAllowlistByType: config.formatting?.objects?.fieldAllowlistByType || {},
+      fieldDenylistByType: config.formatting?.objects?.fieldDenylistByType || {},
+      numbers: config.formatting?.numbers || {},
     };
     return cachedPreviewOptions;
   }
